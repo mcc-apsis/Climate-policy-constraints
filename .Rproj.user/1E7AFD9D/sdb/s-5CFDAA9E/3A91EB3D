@@ -1,0 +1,29 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1534506727681.000,
+    "dirty" : false,
+    "encoding" : "",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "3A91EB3D",
+    "lastKnownWriteTime" : 30399718399213648,
+    "last_content_update" : 1534506727681,
+    "path" : null,
+    "project_path" : null,
+    "properties" : {
+        "cacheKey" : "3582DF00",
+        "caption" : "mapdata",
+        "contentUrl" : "grid_resource/gridviewer.html?env=&obj=mapdata&cache_key=3582DF00",
+        "displayedObservations" : "94863",
+        "environment" : "",
+        "object" : "mapdata",
+        "preview" : "0",
+        "totalObservations" : "94863",
+        "variables" : "19"
+    },
+    "relative_order" : 5,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_dataframe"
+}

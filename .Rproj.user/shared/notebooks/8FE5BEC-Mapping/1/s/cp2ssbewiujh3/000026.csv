@@ -1,0 +1,87 @@
+"0","#do.call(grid.arrange,c(plmaps,ncol=1))"
+"0","summary_vars <- gather(ch,key,value,risk$vars) %>% "
+"0","  group_by(key) %>% "
+"0","  summarise_at(""value"",funs(n=sum(!is.na(.)),mean=mean(.),min=min(.),max=max(.)),na.rm=TRUE)"
+"0","#summary_vars$mean[1] <- format(summary_vars$mean[1],digits=3,scientific=FALSE) "
+"0","kable(summary_vars, format = ""html"", caption=""Summary statistics"",digits=1) %>%"
+"0","  kable_styling()"
+"1","<table class=""table"" style=""margin-left: auto; margin-right: auto;"">
+<caption>Summary statistics</caption>
+ <thead>
+  <tr>
+   <th style=""text-align:left;""> key </th>
+   <th style=""text-align:right;""> n </th>
+   <th style=""text-align:right;""> mean </th>
+   <th style=""text-align:right;""> min </th>
+   <th style=""text-align:right;""> max </th>
+  </tr>
+ </thead>
+<tbody>
+  <tr>
+   <td style=""text-align:left;""> ene_share_coal </td>
+   <td style=""text-align:right;""> 133 </td>
+   <td style=""text-align:right;""> Inf </td>
+   <td style=""text-align:right;""> 0.0 </td>
+   <td style=""text-align:right;""> Inf </td>
+  </tr>
+  <tr>
+   <td style=""text-align:left;""> ene_share_gas </td>
+   <td style=""text-align:right;""> 133 </td>
+   <td style=""text-align:right;""> 0.2 </td>
+   <td style=""text-align:right;""> 0.0 </td>
+   <td style=""text-align:right;""> 1.0 </td>
+  </tr>
+  <tr>
+   <td style=""text-align:left;""> ene_share_oil </td>
+   <td style=""text-align:right;""> 133 </td>
+   <td style=""text-align:right;""> 0.4 </td>
+   <td style=""text-align:right;""> 0.1 </td>
+   <td style=""text-align:right;""> 0.9 </td>
+  </tr>
+  <tr>
+   <td style=""text-align:left;""> frac_ethnic </td>
+   <td style=""text-align:right;""> 152 </td>
+   <td style=""text-align:right;""> 0.5 </td>
+   <td style=""text-align:right;""> 0.0 </td>
+   <td style=""text-align:right;""> 0.9 </td>
+  </tr>
+  <tr>
+   <td style=""text-align:left;""> gini_disp </td>
+   <td style=""text-align:right;""> 151 </td>
+   <td style=""text-align:right;""> 37.8 </td>
+   <td style=""text-align:right;""> 22.9 </td>
+   <td style=""text-align:right;""> 60.5 </td>
+  </tr>
+  <tr>
+   <td style=""text-align:left;""> gov_corrupt_WGI </td>
+   <td style=""text-align:right;""> 156 </td>
+   <td style=""text-align:right;""> -0.2 </td>
+   <td style=""text-align:right;""> -1.8 </td>
+   <td style=""text-align:right;""> 2.3 </td>
+  </tr>
+  <tr>
+   <td style=""text-align:left;""> gov_effect_WGI </td>
+   <td style=""text-align:right;""> 156 </td>
+   <td style=""text-align:right;""> -0.1 </td>
+   <td style=""text-align:right;""> -2.5 </td>
+   <td style=""text-align:right;""> 2.2 </td>
+  </tr>
+  <tr>
+   <td style=""text-align:left;""> rrents_tot_WB </td>
+   <td style=""text-align:right;""> 155 </td>
+   <td style=""text-align:right;""> 7.1 </td>
+   <td style=""text-align:right;""> 0.0 </td>
+   <td style=""text-align:right;""> 48.4 </td>
+  </tr>
+  <tr>
+   <td style=""text-align:left;""> trust </td>
+   <td style=""text-align:right;""> 156 </td>
+   <td style=""text-align:right;""> 0.3 </td>
+   <td style=""text-align:right;""> 0.0 </td>
+   <td style=""text-align:right;""> 0.7 </td>
+  </tr>
+</tbody>
+</table>"
+"1","
+"
+"0","rm(plmaps,summary_vars)"

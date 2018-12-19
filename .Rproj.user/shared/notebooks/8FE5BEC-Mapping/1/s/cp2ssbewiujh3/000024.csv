@@ -1,0 +1,8 @@
+"0","blarg <- gather(mapdata,key,value,risk$vars)"
+"0","blarg %>% "
+"0","  ggplot(.,aes(x=long,y=lat,group = paste(region,group),fill=value)) +"
+"0","  geom_polygon(color=""white"") +"
+"0","  facet_wrap(key ~.)+"
+"0","  theme_minimal() +"
+"0","  theme(axis.title = element_blank(),axis.text = element_blank(),panel.border = element_rect(color='grey',fill='NA')) +"
+"0","  xlim(-180,180)"

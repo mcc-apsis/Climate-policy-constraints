@@ -1,0 +1,1 @@
+"0","autoplot(comps,loadings=TRUE,loadings.label=TRUE,data=pc,label=TRUE,colour='cluster')"
