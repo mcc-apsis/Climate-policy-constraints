@@ -5,7 +5,7 @@ library(xlsx)
 
 ##### import data from Matlab
 
-file.copy('C:/Users/lamw/Google Drive/Work/Code/MATLAB/Data shop/Aggregation/Transition challenges/pe.xls','Data/',overwrite=TRUE)
+file.copy('C:/Users/lamw/Documents/SpiderOak Hive/Work/Code/MATLAB/Data shop/Aggregation/Transition challenges/pe.xls','Data/',overwrite=TRUE)
 pe<-read.xlsx('Data/pe.xls','data')
 
 save(pe,file='Data/pe.RData')

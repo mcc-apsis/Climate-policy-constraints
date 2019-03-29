@@ -26,7 +26,7 @@ load('Data/pe.RData')
 
 ############### join SWIID ###############
 
-load('C:\\Users\\lamw\\Google Drive\\Work\\Code\\R\\Database\\SWIID\\SWIID.RData')
+load('C:\\Users\\lamw\\Documents\\SpiderOak Hive\\Work\\Code\\R\\Database\\SWIID\\SWIID.RData')
 pe <- left_join(pe,swiid_summary %>% select(ISO,year,gini_disp),by=c("ISO"="ISO","Year"="year"))
 
 rm(swiid_summary)
@@ -48,7 +48,7 @@ world <- map_data("world") %>%
   filter(region != "Antarctica") %>%
   mutate(region=tolower(region))
 
-isos <- read.xlsx(file="C:\\Users\\lamw\\Google Drive\\Work\\Code\\MATLAB\\Handy code\\ISOcodes.xls",sheetName="3 letter codes",startRow = 3,colIndex=7:8,header=FALSE)
+isos <- read.xlsx(file="C:/Users/lamw/Documents/SpiderOak Hive/Work/Code/MATLAB/Handy code/ISOcodes.xls",sheetName="3 letter codes",startRow = 3,colIndex=7:8,header=FALSE)
 names(isos) = c("country","iso")
 isos <- isos %>% mutate(country=tolower(country))
 
@@ -98,8 +98,8 @@ pe <- pe %>%
 ```{r include=FALSE}
 
 ##### select variables
-vars <- c("rrents_tot_WB","ene_share_coal","ene_share_oil","ene_share_gas","gov_corrupt_WGI","gov_effect_WGI","gini_disp","frac_ethnic","trust")
-group <- c("vested","vested","vested","vested","capacity","capacity","social","social","social")
+vars <- c("gini_disp","frac_ethnic","trust","rrents_tot_WB","ene_share_coal","ene_share_oil","ene_share_gas","gov_corrupt_WGI","gov_effect_WGI")
+group <- c("social","social","social","political","political","political","political","capacity","capacity")
 risk <- cbind(as.data.frame(vars),group) %>% 
   mutate(vars=as.character(vars))
 
@@ -121,7 +121,7 @@ ch <- ch %>%
 
 ```
 
-```{r maps,echo=FALSE,warning=FALSE,fig.width=10,fig.path="Plots/",dev=c('png','pdf')}
+```{r maps,echo=FALSE,warning=FALSE,fig.width=10,fig.path="Results/Plots/",dev=c('png','pdf')}
 
 
 mapdata <- left_join(world,ch,by=c("iso"="ISO"))
@@ -175,7 +175,7 @@ kable(summary_vars, format = "html", caption="Summary statistics",digits=1) %>%
 rm(plmaps,summary_vars)
 ```
 
-```{r stats,echo=FALSE,warning=FALSE,fig.width=8,fig.height=8,fig.path="Plots/",dev=c('png','pdf')}
+```{r stats,echo=FALSE,warning=FALSE,fig.width=8,fig.height=8,fig.path="Results/Plots/",dev=c('png','pdf')}
 
 ### histograms ###
 
@@ -201,7 +201,7 @@ ch %>%
 ```
 
 
-```{r ipcc_regions,echo=FALSE,warning=FALSE,fig.width=10,fig.height=8,fig.path="Plots/",dev=c('png','pdf')}
+```{r ipcc_regions,echo=FALSE,warning=FALSE,fig.width=10,fig.height=8,fig.path="Results/Plots/",dev=c('png','pdf')}
 
 
 ### heterogeneity by exogenous region
@@ -259,7 +259,7 @@ blarg <- blarg %>%
 rm(countries,summary_regions,vars)
 ```
 
-```{r jitters,echo=FALSE,warning=FALSE,fig.width=10,fig.height= 10,fig.path="Plots/",dev=c('png','pdf')}
+```{r jitters,echo=FALSE,warning=FALSE,fig.width=10,fig.height= 10,fig.path="Results/Plots/",dev=c('png','pdf')}
 
 # cc <- pe %>% 
 #   select(c("Country","ISO","Year",risk$vars,"committed_coal_planned")) %>%
@@ -340,7 +340,7 @@ pc$cluster <- as.factor(clusters$cluster) ### convert to factor
 
 ```
 
-```{r clusters,echo=FALSE,warning=FALSE,fig.width=10,fig.path="Plots/",dev=c('png','pdf')}
+```{r clusters,echo=FALSE,warning=FALSE,fig.width=10,fig.path="Results/Plots/",dev=c('png','pdf')}
 
 autoplot(comps,loadings=TRUE,loadings.label=TRUE,data=pc,label=TRUE,colour='cluster')
 
@@ -356,7 +356,7 @@ mapdata %>%
 
 ```
 
-```{r time_trends,echo=FALSE,warning=FALSE,fig.width=8,fig.height=8,fig.path="Plots/",dev=c('png','pdf')}
+```{r time_trends,echo=FALSE,warning=FALSE,fig.width=8,fig.height=8,fig.path="Results/Plots/",dev=c('png','pdf')}
 
 
 tt <- pe %>%
@@ -502,7 +502,7 @@ kable(t(cluster_summary), format = "html", caption="blarg",digits=1) %>%
 
 ```
 
-```{r cluster_risks,echo=FALSE,warning=FALSE,fig.width=8,fig.path="Plots/",dev=c('png','pdf')}
+```{r cluster_risks,echo=FALSE,warning=FALSE,fig.width=8,fig.path="Results/Plots/",dev=c('png','pdf')}
 
 
 risks <- pe %>% 

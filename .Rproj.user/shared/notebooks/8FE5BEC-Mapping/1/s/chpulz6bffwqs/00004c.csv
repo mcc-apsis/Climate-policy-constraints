@@ -1,6 +1,0 @@
-"0","### histograms ###"
-"0","gather(ch,key,value,risk$vars) %>% "
-"0","  ggplot(.,aes(x=value)) +"
-"0","  geom_histogram(bins=20) +"
-"0","  facet_wrap(. ~ key,scales=""free"") +"
-"0","  theme(axis.title = element_blank())"

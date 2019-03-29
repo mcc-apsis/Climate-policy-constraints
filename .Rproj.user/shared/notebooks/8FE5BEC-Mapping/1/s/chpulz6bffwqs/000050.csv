@@ -1,3 +1,0 @@
-"0","ch %>%"
-"0","  select(risk$vars) %>%"
-"0","  ggpairs(progress = FALSE)"

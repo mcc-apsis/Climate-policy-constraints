@@ -1,8 +1,0 @@
-"0","mapdata <- left_join(world,pc,by=c(""iso""=""ISO""))"
-"0","mapdata %>%"
-"0","  ggplot(.) +"
-"0","  geom_polygon(aes(long,lat,group = paste(region,group),fill=cluster),color=""white"") +"
-"0","  theme_void() +"
-"0","  coord_fixed(1) +"
-"0","  scale_fill_discrete() +"
-"0","  labs(title=""Typology"")"
