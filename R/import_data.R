@@ -7,16 +7,14 @@ library(xlsx)
 
 file.copy('C:/Users/lamw/Documents/SpiderOak Hive/Work/Code/MATLAB/Data shop/Aggregation/Transition challenges/pe.xls','Data/',overwrite=TRUE)
 pe<-read.xlsx('Data/pe.xls','data')
-
 save(pe,file='Data/pe.RData')
 
 
 ##### import remind data
 
-library(openxlsx)
-remind <- read.xlsx('Data\\ERL_13_064038_SD_Scenario_data.xlsx','Scenario_data_R5')
-
-save(remind,file='Data/remind.RData')
+#library(openxlsx)
+#remind <- read.xlsx('Data\\ERL_13_064038_SD_Scenario_data.xlsx','Scenario_data_R5')
+#save(remind,file='Data/remind.RData')
 
 
 ##### Values Surveys
@@ -49,30 +47,16 @@ AVS <- AVS %>%
   group_by(COUNTRY) %>% 
   summarise(AVS_trust=mean(trust,na.rm=T))
 
-# merge, check consistency
-RVS <- pe %>% 
-  select(Country,ISO,Year,values_trust_sta) %>% 
-  mutate_all(funs(na.locf(.,na.rm=FALSE)))
-RVS <- left_join(RVS,EVS,by=c("Country"="S003"))
-RVS <- left_join(RVS,LAVS,by=c("Country"="idenpa"))
-RVS <- left_join(RVS,AVS,by=c("Country"="COUNTRY")) %>% 
-  filter(Year==2015)
+save(AVS,EVS,LAVS,file='Data/RVS.RData')
 
-RVS <- RVS %>% 
-  mutate(regional=ifelse(is.na(EVS_trust)==FALSE,EVS_trust,LAVS_trust)) %>% 
-  mutate(regional=ifelse(is.na(AVS_trust)==FALSE,AVS_trust,regional)) %>% 
-  mutate(trust=ifelse(is.na(regional)==FALSE,regional,values_trust_sta))
 
-RVS %>% 
-  ggplot(.,aes(x=regional,y=values_trust_sta)) +
-  geom_point() +
-  geom_abline(intercept=0,slope=1)
-         
-RVS %>%
-  filter(!is.na(trust)) %>%
-  arrange(desc(trust)) %>% 
-  ggplot(.,aes(x=reorder(Country, trust),y=trust))+
-  geom_bar(stat='identity') + 
-  theme(axis.text.x = element_text(angle = 90, hjust = 1,vjust=0.35))
-  
-save(RVS,file='Data/RVS.RData')
+######## V-Dem data
+
+
+vdem <-read.csv('Data/V-Dem/V-Dem-CY+Others-v8.csv')
+
+vdem <- vdem %>% 
+  select(Country=country_name,ISO=country_text_id,year,democracy_electoral_vdem=v2x_polyarchy,corruption_public_vdem=v2excrptps) %>% 
+  filter(year>1950)
+
+save(vdem,file='Data/vdem.RData')

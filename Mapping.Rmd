@@ -26,17 +26,41 @@ load('Data/pe.RData')
 
 ############### join SWIID ###############
 
-load('C:\\Users\\lamw\\Documents\\SpiderOak Hive\\Work\\Code\\R\\Database\\SWIID\\SWIID.RData')
-pe <- left_join(pe,swiid_summary %>% select(ISO,year,gini_disp),by=c("ISO"="ISO","Year"="year"))
-
-rm(swiid_summary)
+#load('C:\\Users\\lamw\\Documents\\SpiderOak Hive\\Work\\Code\\R\\Database\\SWIID\\SWIID.RData')
+#pe <- left_join(pe,swiid_summary %>% select(ISO,year,gini_disp),by=c("ISO"="ISO","Year"="year"))
+#rm(swiid_summary)
 
 ############### join regional values surveys ###############
 
 load('Data/RVS.RData')
-pe <- left_join(pe,RVS %>% select(ISO,Year,trust),by=c("ISO"="ISO","Year"="Year"))
 
-rm(RVS)
+# merge, check consistency
+RVS <- pe %>% 
+  select(Country,ISO,Year,values_trust_sta) %>% 
+  mutate_all(funs(na.locf(.,na.rm=FALSE)))
+RVS <- left_join(RVS,EVS,by=c("Country"="S003"))
+RVS <- left_join(RVS,LAVS,by=c("Country"="idenpa"))
+RVS <- left_join(RVS,AVS,by=c("Country"="COUNTRY")) %>% 
+  filter(Year==2015)
+
+RVS <- RVS %>% 
+  mutate(regional=ifelse(is.na(EVS_trust)==FALSE,EVS_trust,LAVS_trust)) %>% 
+  mutate(regional=ifelse(is.na(AVS_trust)==FALSE,AVS_trust,regional)) %>% 
+  mutate(trust=ifelse(is.na(regional)==FALSE,regional,values_trust_sta))
+
+#RVS %>% 
+#  ggplot(.,aes(x=regional,y=values_trust_sta)) +
+#  geom_point() +
+#  geom_abline(intercept=0,slope=1)
+
+pe <- left_join(pe,RVS %>% select(ISO,Year,trust),by=c("ISO"="ISO","Year"="Year"))
+rm(RVS,AVS,EVS,LAVS)
+
+############### join vdem ############### 
+
+load('Data/vdem.RData')
+pe <- left_join(pe,vdem %>% select(-Country),by=c("ISO"="ISO","Year"="year"))
+rm(vdem)
 
 ############### prepare map ###############
 
@@ -70,17 +94,6 @@ pe <- pe %>%
   mutate(coal_production=ifelse(coal_production==0,NA,coal_production)) %>% 
   mutate(coal_reserves=ifelse(coal_reserves==0,NA,coal_reserves))
   
-
-### sum infrastructure access, bring to latest year
-pe <- pe %>% 
-  group_by(Country) %>% 
-  mutate(infra_elec_WB=na.locf(infra_elec_WB,na.rm=FALSE)) %>% 
-  mutate(infra_water_WB=na.locf(infra_water_WB,na.rm=FALSE)) %>% 
-  mutate(infra_sanitation_WB=na.locf(infra_sanitation_WB,na.rm=FALSE)) %>% 
-  group_by(Country,Year) %>% 
-  mutate(infra_access=mean(c(infra_elec_WB,infra_water_WB,infra_sanitation_WB)))
-  
-
 ### elec shares
 pe <- pe %>% 
   group_by(Country) %>% 
@@ -93,13 +106,21 @@ pe <- pe %>%
   mutate(gdp_ppp_pc=gdp_ppp_WB/pop_UN) %>% 
   mutate(co2_terr_pc=co2_terr_GCB/pop_UN)
 
+### sum oil and gas resource rents
+pe <- pe %>% 
+  group_by(Country) %>% 
+  mutate(rrents_oilgas_WB=rrents_oil_WB+rrents_gas_WB)
+
+
 ```
 
 ```{r include=FALSE}
 
 ##### select variables
-vars <- c("gini_disp","frac_ethnic","trust","rrents_tot_WB","ene_share_coal","ene_share_oil","ene_share_gas","gov_corrupt_WGI","gov_effect_WGI")
-group <- c("social","social","social","political","political","political","political","capacity","capacity")
+vars <- c("rrents_oilgas_WB","ene_share_coal","democracy_electoral_vdem","corruption_public_vdem","trust")
+
+
+group <- c("interests","interests","institutions","institutions","ideas")
 risk <- cbind(as.data.frame(vars),group) %>% 
   mutate(vars=as.character(vars))
 
@@ -127,8 +148,9 @@ ch <- ch %>%
 mapdata <- left_join(world,ch,by=c("iso"="ISO"))
 # reverse direction of WGI indicators, for interpretability
 mapdata <- mapdata %>% 
-  mutate(gov_corrupt_WGI=-gov_corrupt_WGI) %>% 
-  mutate(gov_effect_WGI=-gov_effect_WGI)
+  mutate(corruption_public_vdem=-corruption_public_vdem) %>% 
+  mutate(democracy_electoral_vdem=-democracy_electoral_vdem) %>% 
+  mutate(trust=-trust)
 
 plmaps <- list()
 
@@ -151,14 +173,14 @@ for(i in 1:length(risk$vars)) {
   plot(plmaps[[i]])
 }
 
-blarg <- gather(mapdata,key,value,risk$vars)
-blarg %>% 
-  ggplot(.,aes(x=long,y=lat,group = paste(region,group),fill=value)) +
-  geom_polygon(color="white") +
-  facet_wrap(key ~.)+
-  theme_minimal() +
-  theme(axis.title = element_blank(),axis.text = element_blank(),panel.border = element_rect(color='grey',fill='NA')) +
-  xlim(-180,180)
+#blarg <- gather(mapdata,key,value,risk$vars)
+#blarg %>% 
+#  ggplot(.,aes(x=long,y=lat,group = paste(region,group),fill=value)) +
+#  geom_polygon(color="white") +
+#  facet_wrap(key ~.)+
+#  theme_minimal() +
+#  theme(axis.title = element_blank(),axis.text = element_blank(),panel.border = element_rect(color='grey',fill='NA')) +
+#  xlim(-180,180)
 
 
 #do.call(grid.arrange,c(plmaps,ncol=1))
@@ -332,7 +354,7 @@ plot(1:15, wss, type="b", xlab="Number of Clusters",
 # pc$cluster <- as.factor(clusters$cluster) ### convert to factor
 
 
-clusters <- pam(comps$x[,1:4],6)
+clusters <- pam(comps$x[,1:3],5)
 pc <- cbind(pc,cluster=clusters$cluster) ### bind clusters to dataset
 pc$cluster <- as.factor(clusters$cluster) ### convert to factor
 
@@ -371,20 +393,15 @@ tt <- left_join(tt,pc %>% rownames_to_column(var="Country") %>% select(Country,c
 tt <- tt %>%
   group_by(Country,region_RCP5,cluster) %>%
   filter(!is.na(region_RCP5)) %>% 
-  mutate(gov_corrup_90s=mean(gov_corrupt_WGI[which(Year>=1996 & Year<=2000)]),
-            gov_corrup_10s=mean(gov_corrupt_WGI[which(Year>=2010 & Year<=2014)]),
-            gov_effect_90s=mean(gov_corrupt_WGI[which(Year>=1996 & Year<=2000)]),
-            gov_effect_10s=mean(gov_corrupt_WGI[which(Year>=2010 & Year<=2014)]),
-            econ_rrents_90s=mean(rrents_tot_WB[which(Year>=1995 & Year<=2000)]),
-            econ_rrents_10s=mean(rrents_tot_WB[which(Year>=2010 & Year<=2014)]),
-            gini_90s=mean(gini_disp[which(Year>=1996 & Year <=2014)]),
-            gini_10s=mean(gini_disp[which(Year>=2010 & Year <=2014)]),
+  mutate(
+            gov_corrup_90s=mean(corruption_public_vdem[which(Year>=1996 & Year<=2000)]),
+            gov_corrup_10s=mean(corruption_public_vdem[which(Year>=2010 & Year<=2014)]),
+            democracy_90s=mean(democracy_electoral_vdem[which(Year>=1996 & Year<=2000)]),
+            democracy_10s=mean(democracy_electoral_vdem[which(Year>=2010 & Year<=2014)]),
+            oilgas_rrents_90s=mean(rrents_oilgas_WB[which(Year>=1995 & Year<=2000)]),
+            oilgas_rrents_10s=mean(rrents_oilgas_WB[which(Year>=2010 & Year<=2014)]),
             coal_90s=mean(ene_share_coal[which(Year>=1995 & Year <=2000)]),
-            coal_10s=mean(ene_share_coal[which(Year>=2010 & Year <=2013)]),
-            oil_90s=mean(ene_share_oil[which(Year>=1995 & Year <=2000)]),
-            oil_10s=mean(ene_share_oil[which(Year>=2010 & Year <=2013)]),
-            gas_90s=mean(ene_share_gas[which(Year>=1995 & Year <=2000)]),
-            gas_10s=mean(ene_share_gas[which(Year>=2010 & Year <=2013)]))
+            coal_10s=mean(ene_share_coal[which(Year>=2010 & Year <=2013)]))
          
          
          
@@ -396,22 +413,22 @@ plots[[1]] <- tt %>%
   geom_point(pch=21,stroke=0.5,colour="#636363") +
   scale_size_continuous(range = c(1,10)) +
   geom_abline(intercept=0,slope=1) +
-  xlim(-2,2) +
-  ylim(-2,2) +
+  #xlim(-2,2) +
+  #ylim(-2,2) +
   theme(legend.position="none")
   
   
 plots[[2]] <- tt %>% 
-  ggplot(.,aes(x=gov_effect_90s,y=gov_effect_10s,fill=cluster,size=pop_UN)) +
+  ggplot(.,aes(x=democracy_90s,y=democracy_10s,fill=cluster,size=pop_UN)) +
   geom_point(pch=21,stroke=0.5,colour="#636363") +
   scale_size_continuous(range = c(1,10)) +
   geom_abline(intercept=0,slope=1) +
-  xlim(-2,2) +
-  ylim(-2,2) +
+  xlim(0,1) +
+  ylim(0,1) +
   theme(legend.position="none")
 
 plots[[3]] <- tt %>%
-  ggplot(.,aes(x=econ_rrents_90s,y=econ_rrents_10s,fill=cluster,size=pop_UN)) +
+  ggplot(.,aes(x=oilgas_rrents_90s,y=oilgas_rrents_10s,fill=cluster,size=pop_UN)) +
   geom_point(pch=21,stroke=0.5,colour="#636363") +
   scale_size_continuous(range = c(1,10)) +
   geom_abline(intercept=0,slope=1) +
@@ -420,30 +437,7 @@ plots[[3]] <- tt %>%
   ylim(0,60)
 
 plots[[4]] <- tt %>%
-  ggplot(.,aes(x=gini_90s,y=gini_10s,fill=cluster,size=pop_UN)) +
-  geom_point(pch=21,stroke=0.5,colour="#636363") +
-  scale_size_continuous(range = c(1,10)) +
-  geom_abline(intercept=0,slope=1) +
-  theme(legend.position="none")+
-  xlim(20,60)+
-  ylim(20,60)
-
-plots[[5]] <- tt %>%
   ggplot(.,aes(x=coal_90s,y=coal_10s,fill=cluster,size=pop_UN)) +
-  geom_point(pch=21,stroke=0.5,colour="#636363") +
-  scale_size_continuous(range = c(1,10)) +
-  geom_abline(intercept=0,slope=1) +
-  theme(legend.position="none")
-
-plots[[6]] <- tt %>%
-  ggplot(.,aes(x=oil_90s,y=oil_10s,fill=cluster,size=pop_UN)) +
-  geom_point(pch=21,stroke=0.5,colour="#636363") +
-  scale_size_continuous(range = c(1,10)) +
-  geom_abline(intercept=0,slope=1) +
-  theme(legend.position="none")
-
-plots[[7]] <- tt %>%
-  ggplot(.,aes(x=gas_90s,y=gas_10s,fill=cluster,size=pop_UN)) +
   geom_point(pch=21,stroke=0.5,colour="#636363") +
   scale_size_continuous(range = c(1,10)) +
   geom_abline(intercept=0,slope=1) +
@@ -506,7 +500,7 @@ kable(t(cluster_summary), format = "html", caption="blarg",digits=1) %>%
 
 
 risks <- pe %>% 
-  select(Country,ISO,Year,co2_terr_GCB,committed_coal_planned,infra_access,
+  select(Country,ISO,Year,co2_terr_GCB,committed_coal_planned,
          fossil_coal_hard_RSV,fossil_coal_lignite_RSV,fossil_gas_RSV,fossil_oil_RSV,pop_UN) %>% 
   group_by(Country) %>% 
   mutate_all(funs(na.locf(.,na.rm=FALSE))) %>% 
