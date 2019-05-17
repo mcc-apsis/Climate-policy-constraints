@@ -17,39 +17,6 @@ save(pe,file='Data/pe.RData')
 #save(remind,file='Data/remind.RData')
 
 
-##### Values Surveys
-# European
-library(foreign)
-EVS <- foreign::read.dta("Data/European Values Survey.dta") %>% 
-  select(S003,A165)
-EVS$trust[grepl("Most people can be trusted",EVS$A165)] <- 1
-EVS$trust[grepl("Can´t be too careful",EVS$A165)] <- 0
-EVS <- EVS %>% 
-  group_by(S003) %>% 
-  summarise(EVS_trust=mean(trust,na.rm=T))
-
-#Latin American
-LAVS <- foreign::read.dta("Data/Latinobarometro2017Eng_v20180117.dta") %>% 
-  select(idenpa,P13STGBS)
-LAVS$trust[grepl("One can never be too careful when dealing with others",LAVS$P13STGBS)] <- 0
-LAVS$trust[grepl("Most people can be trusted",LAVS$P13STGBS)] <- 1
-LAVS <- LAVS %>% 
-  group_by(idenpa) %>% 
-  summarise(LAVS_trust=mean(trust,na.rm=T))
-
-#African
-AVS <- foreign::read.spss("Data/Afrobarometer.sav")
-AVS <- data.frame(AVS) %>% 
-  select(COUNTRY,Q87)
-AVS$trust[grepl("Must be very careful",AVS$Q87)] <- 0
-AVS$trust[grepl("Most people can be trusted",AVS$Q87)] <- 1
-AVS <- AVS %>% 
-  group_by(COUNTRY) %>% 
-  summarise(AVS_trust=mean(trust,na.rm=T))
-
-save(AVS,EVS,LAVS,file='Data/RVS.RData')
-
-
 ######## V-Dem data
 
 
@@ -60,3 +27,61 @@ vdem <- vdem %>%
   filter(year>1950)
 
 save(vdem,file='Data/vdem.RData')
+
+
+######### CC Laws
+
+laws <- read.csv('Data/CCLaws.csv',sep=',') %>% 
+  mutate(Country=tolower(Country))
+ISOs <- read.xlsx('C:/Users/lamw/Documents/SpiderOak Hive/Work/Code/R/.Place names and codes/output/ISOcodes.xlsx','alternative_names',encoding = 'UTF-8') %>% 
+  mutate(alternative.name=tolower(alternative.name))
+
+laws <- left_join(laws,ISOs %>% select(alternative.name,alpha.3),by=c("Country"="alternative.name")) %>% 
+  select(Country,ISO=alpha.3,everything())
+
+### plot ###
+# ISOs2 <- read.xlsx('C:/Users/lamw/Documents/SpiderOak Hive/Work/Code/R/.Place names and codes/output/ISOcodes.xlsx','ISO_master',encoding = 'UTF-8') %>% 
+#   select(alpha.3,region)
+# library(gridExtra)
+# laws <- left_join(laws,ISOs2,by=c("ISO"="alpha.3"))
+# plots <- list()
+# 
+# plots[[1]] <- laws %>% 
+#   filter(grepl("Law|Plan|Policy|Strategy",Document.Type)) %>% 
+#   group_by(Year.Passed,Document.Type) %>%
+#   summarise(no.laws=n()) %>% 
+#   ggplot(.,aes(x=Year.Passed,y=no.laws,fill=Document.Type)) +
+#   geom_bar(stat='identity')+
+#   xlim(1990,2018)
+# 
+# plots[[2]] <- laws %>% 
+#   filter(grepl("Law|Plan|Policy|Strategy",Document.Type)) %>% 
+#   group_by(Year.Passed,region) %>%
+#   summarise(no.laws=n()) %>% 
+#   ggplot(.,aes(x=Year.Passed,y=no.laws,fill=region)) +
+#   geom_bar(stat='identity')+
+#   xlim(1990,2018)
+# 
+# do.call(grid.arrange,c(plots,ncol=1))
+
+# remove frameworks
+# laws <- laws %>% 
+#   filter(!grepl("Mitigation and adaptation",Framework)) %>% 
+#   filter(!grepl("mitigation and adaptation",Framework)) %>% 
+#   filter(!grepl("Mitigation",Framework)) %>% 
+#   filter(!grepl("Adaptation",Framework)) %>% 
+#   filter(!grepl("mitigation",Framework))
+
+# remove adaptation only laws
+laws <- laws[grep("^Adaptation*$",laws$Framework,invert=TRUE),]
+laws <- laws[grep("^(Adaptation)*$",laws$Categories,invert=TRUE),]
+laws <- laws[grep("^(Adaptation; Institutions / Administrative arrangements)*$",laws$Categories,invert=TRUE),]
+
+
+
+## aggregate
+laws <- laws %>% 
+  group_by(Country,ISO) %>% 
+  summarise(laws=n())
+
+save(laws,file='Data/laws.RData')

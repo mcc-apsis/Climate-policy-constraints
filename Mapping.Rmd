@@ -32,35 +32,20 @@ load('Data/pe.RData')
 
 ############### join regional values surveys ###############
 
-load('Data/RVS.RData')
+load('Data/WVS.RData')
 
-# merge, check consistency
-RVS <- pe %>% 
-  select(Country,ISO,Year,values_trust_sta) %>% 
-  mutate_all(funs(na.locf(.,na.rm=FALSE)))
-RVS <- left_join(RVS,EVS,by=c("Country"="S003"))
-RVS <- left_join(RVS,LAVS,by=c("Country"="idenpa"))
-RVS <- left_join(RVS,AVS,by=c("Country"="COUNTRY")) %>% 
-  filter(Year==2015)
-
-RVS <- RVS %>% 
-  mutate(regional=ifelse(is.na(EVS_trust)==FALSE,EVS_trust,LAVS_trust)) %>% 
-  mutate(regional=ifelse(is.na(AVS_trust)==FALSE,AVS_trust,regional)) %>% 
-  mutate(trust=ifelse(is.na(regional)==FALSE,regional,values_trust_sta))
-
-#RVS %>% 
-#  ggplot(.,aes(x=regional,y=values_trust_sta)) +
-#  geom_point() +
-#  geom_abline(intercept=0,slope=1)
-
-pe <- left_join(pe,RVS %>% select(ISO,Year,trust),by=c("ISO"="ISO","Year"="Year"))
-rm(RVS,AVS,EVS,LAVS)
+pe <- left_join(pe,WVS %>% select(ISO,trust_first,trust_last),by=c("ISO"="ISO"))
 
 ############### join vdem ############### 
 
 load('Data/vdem.RData')
 pe <- left_join(pe,vdem %>% select(-Country),by=c("ISO"="ISO","Year"="year"))
 rm(vdem)
+
+############### join laws ############### 
+
+load('Data/laws.RData')
+pe <- left_join(pe,laws %>% ungroup %>% select(-Country),by=c("ISO"="ISO"))
 
 ############### prepare map ###############
 
@@ -81,19 +66,6 @@ world <- left_join(world,isos,by=c("region"="country"))
 rm(isos)
 ############### prepare data ###############
 
-### sum coal and lignite production, bring to latest year
-pe <- pe %>% 
-  group_by(Country) %>% 
-  mutate(fossil_coal_hard_production=na.locf(fossil_coal_hard_production,na.rm=FALSE)) %>% 
-  mutate(fossil_coal_lignite_production=na.locf(fossil_coal_lignite_production,na.rm=FALSE)) %>% 
-  mutate(fossil_coal_hard_RSV=na.locf(fossil_coal_hard_RSV,na.rm=FALSE)) %>% 
-  mutate(fossil_coal_lignite_RSV=na.locf(fossil_coal_lignite_RSV,na.rm=FALSE)) %>% 
-  group_by(Country,Year) %>% 
-  mutate(coal_production=sum(fossil_coal_hard_production,fossil_coal_lignite_production,na.rm = TRUE)) %>% 
-  mutate(coal_reserves=sum(fossil_coal_lignite_RSV,fossil_coal_hard_RSV,na.rm=TRUE)) %>% 
-  mutate(coal_production=ifelse(coal_production==0,NA,coal_production)) %>% 
-  mutate(coal_reserves=ifelse(coal_reserves==0,NA,coal_reserves))
-  
 ### elec shares
 pe <- pe %>% 
   group_by(Country) %>% 
@@ -117,28 +89,35 @@ pe <- pe %>%
 ```{r include=FALSE}
 
 ##### select variables
-vars <- c("rrents_oilgas_WB","ene_share_coal","democracy_electoral_vdem","corruption_public_vdem","trust")
+vars <- c("rrents_oilgas_WB","ene_share_coal","democracy_electoral_vdem","corruption_public_vdem","trust_last","laws")
 
 
-group <- c("interests","interests","institutions","institutions","ideas")
+group <- c("interests","interests","institutions","institutions","ideas","dependent")
 risk <- cbind(as.data.frame(vars),group) %>% 
   mutate(vars=as.character(vars))
 
 ch <- pe %>% 
-  select(c("Country","ISO","Year","region_IAM10","region_RCP5",risk$vars,"pop_UN"))
+  select(c("Country","ISO","Year","pop_UN","region_IAM10","region_RCP5",risk$vars)) %>% 
+  filter(Year>=1990)
 
 rm(vars,group)
+
 #### bring data to latest year [DO SOME CHECKS HERE] ####
 
 ch <- ch %>% 
   group_by(Country) %>% 
-  mutate_all(funs(na.locf(.,na.rm=FALSE))) %>% 
+  mutate_at(vars(-group_cols()),funs(na.locf(.,na.rm=FALSE))) %>% 
   ungroup() %>% 
   filter(Year==2015) %>% 
   filter(Country!="World") %>% 
-  filter(pop_UN>1000000) %>% 
-  select(-pop_UN)
+  filter(pop_UN>1000000)
 
+
+#### change the signs on the data 1 is more constrained, 0 is less
+# ch <- ch %>% 
+#   mutate(democracy_electoral_vdem=-democracy_electoral_vdem) %>% 
+#   mutate(corruption_public_vdem=-corruption_public_vdem) %>% 
+#   mutate(trust_last=-trust_last)
 
 ```
 
@@ -147,11 +126,6 @@ ch <- ch %>%
 
 mapdata <- left_join(world,ch,by=c("iso"="ISO"))
 # reverse direction of WGI indicators, for interpretability
-mapdata <- mapdata %>% 
-  mutate(corruption_public_vdem=-corruption_public_vdem) %>% 
-  mutate(democracy_electoral_vdem=-democracy_electoral_vdem) %>% 
-  mutate(trust=-trust)
-
 plmaps <- list()
 
 for(i in 1:length(risk$vars)) {
@@ -209,16 +183,15 @@ gather(ch,key,value,risk$vars) %>%
 
 ### correlation plots ### 
 
-ch %>%
-  # mutate(gov_effect_WGI=-gov_effect_WGI) %>% 
-  # mutate(gov_corrupt_WGI=-gov_corrupt_WGI) %>% 
-  select(risk$vars) %>%
-  ggcorr(method=c("na.or.complete","spearman"),label=TRUE,label_size=4,label_alpha=TRUE,hjust = 0.85,size = 4, color = "grey50",
-         layout.exp = 2)
+library(ggcorrplot)
+blarg <- round(cor(ch %>% select(risk$vars),method="spearman",use="complete.obs"),2)
+ggcorrplot(blarg,type="upper",
+           ggtheme = ggplot2::theme_gray,
+   colors = c("#6D9EC1", "white", "#E46726"),lab=TRUE)
 
-ch %>%
-  select(risk$vars) %>%
-  ggpairs(progress = FALSE)
+#ch %>%
+#  select(risk$vars) %>%
+#  ggpairs(progress = FALSE)
 
 ```
 
@@ -227,58 +200,58 @@ ch %>%
 
 
 ### heterogeneity by exogenous region
-region="region_RCP5"
-
-countries <- ch %>%
-  group_by_(region) %>%
-  summarise(countries=paste(Country, collapse=", "))
-
-summary_regions <- ch %>% 
-  group_by_(region) %>% 
-  summarise_at(risk$vars,mean,na.rm=TRUE) %>% 
-  cbind(.,countries=countries$countries) %>% 
-  filter_at(region,any_vars(!is.na(.)))
-
-gather(ch,key,value,risk$vars) %>% 
-  filter_at(region,any_vars(!is.na(.))) %>% 
-  ggplot(.,aes_string(x=region,y="value",fill=region)) +
-  geom_boxplot() +
-  facet_wrap(key ~., scales="free",switch="y",ncol=3) +
-  theme(axis.text.x=element_blank(),axis.title.x = element_blank(),axis.ticks.x = element_blank()) +
-  theme(axis.title.y = element_blank(),strip.text.y = element_text(size = 10)) +
-  theme(legend.position = "bottom",legend.title = element_blank()) +
-  guides(fill = guide_legend(nrow = 1,label.position = "bottom",keywidth = unit(1.25,"cm")))
-
-
-##### transition bottlenecks
-load('Data\\remind.RData')
-
-vars = c("Emissions|CO2","Policy Cost|Consumption Loss","Policy Cost|GDP Loss","Primary Energy|Coal","Primary Energy|Gas","Primary Energy|Oil","Primary Energy|Fossil","Subsidies|Energy|Fossil","Trade|Primary Energy|Coal|Volume","Trade|Primary Energy|Gas|Volume","Trade|Primary Energy|Oil|Volume","Population");
-
-remind <- remind %>% 
-  filter(SCENARIO=="2C_Def") %>% 
-  mutate(REGION=replace(REGION,REGION=="R5ASIA","ASIA")) %>% 
-  mutate(REGION=replace(REGION,REGION=="R5LAM","LAM")) %>% 
-  mutate(REGION=replace(REGION,REGION=="R5MAF","MAF")) %>% 
-  mutate(REGION=replace(REGION,REGION=="R5OECD90+EU","OECD90")) %>% 
-  mutate(REGION=replace(REGION,REGION=="R5REF","REF")) %>% 
-  filter(VARIABLE %in% vars) %>% 
-  select(-MODEL,-SCENARIO,-UNIT) %>% 
-  filter(REGION!="World")
-
-blarg <- gather(remind,year,value,'2015':'2100')
-blarg <- spread(blarg,VARIABLE,value)
-zz <- blarg %>% 
-  filter(year==2020 | year==2050) %>% 
-  group_by(REGION) %>% 
-  mutate(CO2_reduction_rate = nth(`Emissions|CO2`,1)/nth(`Emissions|CO2`,2))
-  
-blarg <- blarg %>% 
-  group_by(REGION) %>% 
-  summarise(consumption_loss=sum(`Policy Cost|Consumption Loss`)/sum(`Population`),
-            GDP_cost = sum(`Policy Cost|GDP Loss`)/sum(`Population`))
-  
-rm(countries,summary_regions,vars)
+# region="region_RCP5"
+# 
+# countries <- ch %>%
+#   group_by_(region) %>%
+#   summarise(countries=paste(Country, collapse=", "))
+# 
+# summary_regions <- ch %>% 
+#   group_by_(region) %>% 
+#   summarise_at(risk$vars,mean,na.rm=TRUE) %>% 
+#   cbind(.,countries=countries$countries) %>% 
+#   filter_at(region,any_vars(!is.na(.)))
+# 
+# gather(ch,key,value,risk$vars) %>% 
+#   filter_at(region,any_vars(!is.na(.))) %>% 
+#   ggplot(.,aes_string(x=region,y="value",fill=region)) +
+#   geom_boxplot() +
+#   facet_wrap(key ~., scales="free",switch="y",ncol=3) +
+#   theme(axis.text.x=element_blank(),axis.title.x = element_blank(),axis.ticks.x = element_blank()) +
+#   theme(axis.title.y = element_blank(),strip.text.y = element_text(size = 10)) +
+#   theme(legend.position = "bottom",legend.title = element_blank()) +
+#   guides(fill = guide_legend(nrow = 1,label.position = "bottom",keywidth = unit(1.25,"cm")))
+# 
+# 
+# ##### transition bottlenecks
+# load('Data\\remind.RData')
+# 
+# vars = c("Emissions|CO2","Policy Cost|Consumption Loss","Policy Cost|GDP Loss","Primary Energy|Coal","Primary Energy|Gas","Primary Energy|Oil","Primary Energy|Fossil","Subsidies|Energy|Fossil","Trade|Primary Energy|Coal|Volume","Trade|Primary Energy|Gas|Volume","Trade|Primary Energy|Oil|Volume","Population");
+# 
+# remind <- remind %>% 
+#   filter(SCENARIO=="2C_Def") %>% 
+#   mutate(REGION=replace(REGION,REGION=="R5ASIA","ASIA")) %>% 
+#   mutate(REGION=replace(REGION,REGION=="R5LAM","LAM")) %>% 
+#   mutate(REGION=replace(REGION,REGION=="R5MAF","MAF")) %>% 
+#   mutate(REGION=replace(REGION,REGION=="R5OECD90+EU","OECD90")) %>% 
+#   mutate(REGION=replace(REGION,REGION=="R5REF","REF")) %>% 
+#   filter(VARIABLE %in% vars) %>% 
+#   select(-MODEL,-SCENARIO,-UNIT) %>% 
+#   filter(REGION!="World")
+# 
+# blarg <- gather(remind,year,value,'2015':'2100')
+# blarg <- spread(blarg,VARIABLE,value)
+# zz <- blarg %>% 
+#   filter(year==2020 | year==2050) %>% 
+#   group_by(REGION) %>% 
+#   mutate(CO2_reduction_rate = nth(`Emissions|CO2`,1)/nth(`Emissions|CO2`,2))
+#   
+# blarg <- blarg %>% 
+#   group_by(REGION) %>% 
+#   summarise(consumption_loss=sum(`Policy Cost|Consumption Loss`)/sum(`Population`),
+#             GDP_cost = sum(`Policy Cost|GDP Loss`)/sum(`Population`))
+#   
+# rm(countries,summary_regions,vars)
 ```
 
 ```{r jitters,echo=FALSE,warning=FALSE,fig.width=10,fig.height= 10,fig.path="Results/Plots/",dev=c('png','pdf')}
@@ -333,10 +306,8 @@ summary_pca <- rbind(
 kable(summary_pca, format = "html", caption="PCA analysis",digits=2) %>%
    kable_styling()
 
-
-
-d_dist <- dist(as.matrix(comps$x[,1:4])) ### look at heirarchical clusters
-plot(hclust(d_dist))
+#d_dist <- dist(as.matrix(comps$x[,1:4])) ### look at heirarchical clusters
+#plot(hclust(d_dist))
 
 
 ######### scree plot
@@ -354,10 +325,9 @@ plot(1:15, wss, type="b", xlab="Number of Clusters",
 # pc$cluster <- as.factor(clusters$cluster) ### convert to factor
 
 
-clusters <- pam(comps$x[,1:3],5)
+clusters <- pam(comps$x[,1:4],5)
 pc <- cbind(pc,cluster=clusters$cluster) ### bind clusters to dataset
 pc$cluster <- as.factor(clusters$cluster) ### convert to factor
-
 
 
 ```
@@ -378,11 +348,11 @@ mapdata %>%
 
 ```
 
-```{r time_trends,echo=FALSE,warning=FALSE,fig.width=8,fig.height=8,fig.path="Results/Plots/",dev=c('png','pdf')}
+```{r cluster_trends,echo=FALSE,warning=FALSE,fig.width=8,fig.height=8,fig.path="Results/Plots/",dev=c('png','pdf')}
 
 
 tt <- pe %>%
-  select(c("Country","ISO","Year","region_IAM10","region_RCP5",risk$vars,"pop_UN")) %>%
+  select(c("Country","ISO","Year","pop_UN","region_IAM10","region_RCP5",risk$vars,"trust_first")) %>%
   filter(Country!="World")
 
 #1996 - 2000 average
@@ -394,16 +364,16 @@ tt <- tt %>%
   group_by(Country,region_RCP5,cluster) %>%
   filter(!is.na(region_RCP5)) %>% 
   mutate(
-            gov_corrup_90s=mean(corruption_public_vdem[which(Year>=1996 & Year<=2000)]),
+            gov_corrup_90s=mean(corruption_public_vdem[which(Year>=1995 & Year<=2000)]),
             gov_corrup_10s=mean(corruption_public_vdem[which(Year>=2010 & Year<=2014)]),
-            democracy_90s=mean(democracy_electoral_vdem[which(Year>=1996 & Year<=2000)]),
+            democracy_90s=mean(democracy_electoral_vdem[which(Year>=1995 & Year<=2000)]),
             democracy_10s=mean(democracy_electoral_vdem[which(Year>=2010 & Year<=2014)]),
             oilgas_rrents_90s=mean(rrents_oilgas_WB[which(Year>=1995 & Year<=2000)]),
             oilgas_rrents_10s=mean(rrents_oilgas_WB[which(Year>=2010 & Year<=2014)]),
             coal_90s=mean(ene_share_coal[which(Year>=1995 & Year <=2000)]),
-            coal_10s=mean(ene_share_coal[which(Year>=2010 & Year <=2013)]))
-         
-         
+            coal_10s=mean(ene_share_coal[which(Year>=2010 & Year <=2013)]),
+            trust_10s=trust_last,
+            trust_90s=trust_first);
          
          
 plots <- list()
@@ -443,19 +413,44 @@ plots[[4]] <- tt %>%
   geom_abline(intercept=0,slope=1) +
   theme(legend.position="none")
 
+plots[[5]] <- tt %>%
+  ggplot(.,aes(x=trust_90s,y=trust_10s,fill=cluster,size=pop_UN)) +
+  geom_point(pch=21,stroke=0.5,colour="#636363") +
+  scale_size_continuous(range = c(1,10)) +
+  geom_abline(intercept=0,slope=1) +
+  theme(legend.position="none")+
+  xlim(0,0.75)+
+  ylim(0,0.75)
+
 do.call(grid.arrange,c(plots,ncol=2))
 
 #rm(plots,tt)
 ```
 
 
-```{r cluster_trends,echo=FALSE,warning=FALSE,fig.height=10,fig.width=10}
+```{r cluster_stats,echo=FALSE,warning=FALSE,fig.height=6,fig.width=8,fig.path="Results/Plots/",dev=c('png','pdf')}
 
 
 countries <- pc %>%
   rownames_to_column(var="Country") %>% 
   group_by(cluster) %>%
   summarise(countries=paste(Country, collapse=", "))
+
+# weighted_cluster_summary <- pc %>% 
+#   rownames_to_column(var="Country") %>% 
+#   group_by(cluster) %>% 
+#   summarise_at(vars(risk$vars), funs(weighted.mean(.,w=pop_UN)))%>% 
+#   cbind(.,countries=countries$countries) %>% 
+#   select(cluster,countries,everything()) %>% 
+#   mutate(countries=as.character(countries))
+# 
+# weighted_cluster_summary <- cbind(weighted_cluster_summary,mediods=rownames(clusters$medoids)) %>% 
+#   select(cluster,mediods,countries,everything()) %>% 
+#   mutate_at(risk$vars,funs(round(.,2)))
+# 
+# kable(t(weighted_cluster_summary), format = "html", caption="Cluster stats (pop weighted means)",digits=1) %>%
+#    kable_styling() %>%
+#    scroll_box(height = "800px")
 
 cluster_summary <- pc %>%
   rownames_to_column(var="Country") %>% 
@@ -469,34 +464,40 @@ cluster_summary <- cbind(cluster_summary,mediods=rownames(clusters$medoids)) %>%
   select(cluster,mediods,countries,everything()) %>% 
   mutate_at(risk$vars,funs(round(.,2)))
 
-kable(t(cluster_summary), format = "html", caption="blarg",digits=1) %>%
+kable(t(cluster_summary), format = "html", caption="Cluster stats (means)",digits=1) %>%
    kable_styling() %>%
    scroll_box(height = "800px")
 
-###facet grid the trends
+# boxplots
 
-# cluster_trend <- pe %>% 
-#   select(Country,ISO,Year,risk$vars)
-# cluster_trend <- left_join(cluster_trend,pc %>% select(ISO,cluster),by=c("ISO"="ISO")) %>% 
-#   filter(Year>1990) %>% 
-#   filter(!is.na(cluster)) %>% 
-#   group_by(cluster,Year) %>% 
-#   summarise_at(risk$vars,mean,na.rm=TRUE) 
-# 
-# cluster_trend <- gather(cluster_trend,key,value,risk$vars)
-# cluster_trend %>% 
-#   ggplot(.,aes(x=Year,y=value,color=cluster)) +
-#   geom_line(size=1) +
-#   facet_grid(key ~ cluster,scales="free",switch="y") +
-#   theme(legend.position = "none") +
-#   theme(axis.title=element_blank()) +
-#   scale_x_continuous(breaks=c(1990,2000,2010))
-
+gather(pc,key,value,risk$vars) %>% 
+  ggplot(.,aes(x=cluster,y=value,fill=cluster)) +
+  geom_boxplot() +
+  facet_wrap(key ~.,scales="free",ncol=3) +
+  theme(axis.title.y = element_blank(),strip.text.y = element_text(size = 10)) + 
+  theme(axis.text.x=element_blank(),axis.title.x = element_blank(),axis.ticks.x = element_blank()) +
+  theme(legend.position = "bottom",legend.title = element_blank()) +
+  guides(fill = guide_legend(nrow = 1,label.position = "bottom",keywidth = unit(1.25,"cm")))
 
 
 ```
 
 ```{r cluster_risks,echo=FALSE,warning=FALSE,fig.width=8,fig.path="Results/Plots/",dev=c('png','pdf')}
+
+
+### sum coal and lignite production, bring to latest year
+pe <- pe %>% 
+  group_by(Country) %>% 
+  mutate(fossil_coal_hard_production=na.locf(fossil_coal_hard_production,na.rm=FALSE)) %>% 
+  mutate(fossil_coal_lignite_production=na.locf(fossil_coal_lignite_production,na.rm=FALSE)) %>% 
+  mutate(fossil_coal_hard_RSV=na.locf(fossil_coal_hard_RSV,na.rm=FALSE)) %>% 
+  mutate(fossil_coal_lignite_RSV=na.locf(fossil_coal_lignite_RSV,na.rm=FALSE)) %>% 
+  group_by(Country,Year) %>% 
+  mutate(coal_production=sum(fossil_coal_hard_production,fossil_coal_lignite_production,na.rm = TRUE)) %>% 
+  mutate(coal_reserves=sum(fossil_coal_lignite_RSV,fossil_coal_hard_RSV,na.rm=TRUE)) %>% 
+  mutate(coal_production=ifelse(coal_production==0,NA,coal_production)) %>% 
+  mutate(coal_reserves=ifelse(coal_reserves==0,NA,coal_reserves))
+  
 
 
 risks <- pe %>% 
