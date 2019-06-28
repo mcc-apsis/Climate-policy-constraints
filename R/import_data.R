@@ -9,79 +9,70 @@ file.copy('C:/Users/lamw/Documents/SpiderOak Hive/Work/Code/MATLAB/Data shop/Agg
 pe<-read.xlsx('Data/pe.xls','data')
 save(pe,file='Data/pe.RData')
 
+#load('Data/pe.RData')
 
-##### import remind data
+############### join IMF fossil subsidies ###############
 
-#library(openxlsx)
-#remind <- read.xlsx('Data\\ERL_13_064038_SD_Scenario_data.xlsx','Scenario_data_R5')
-#save(remind,file='Data/remind.RData')
+subsidy_a <- read.xlsx('Data/IMF_Fuel_Subsidies_short.xlsx',sheetName='Pre-tax',startRow=2,encoding="UTF-8",check.names=FALSE)
+ISOs <- read.xlsx('C:/Users/lamw/Documents/SpiderOak Hive/Work/Code/R/.Place names and codes/output/ISOcodes.xlsx',sheetName='alternative_names')
 
+subsidy_a <- left_join(subsidy_a %>% mutate(Country=tolower(Country)),ISOs
+                       ,by=c("Country"="alternative.name")) %>% 
+  select(alpha.3,everything()) %>% 
+  filter(!is.na(alpha.3))
 
-######## V-Dem data
+subsidy_a <- gather(subsidy_a,Year,subsidy_pretax_IMF,-Country,-alpha.3)
 
+subsidy_b <- read.xlsx('Data/IMF_Fuel_Subsidies_short.xlsx',sheetName='Post-tax',startRow=2,encoding="UTF-8",check.names=FALSE)
+ISOs <- read.xlsx('C:/Users/lamw/Documents/SpiderOak Hive/Work/Code/R/.Place names and codes/output/ISOcodes.xlsx',sheetName='alternative_names')
 
-vdem <-read.csv('Data/V-Dem/V-Dem-CY+Others-v8.csv')
+subsidy_b <- left_join(subsidy_b %>% mutate(Country=tolower(Country)),ISOs
+                       ,by=c("Country"="alternative.name")) %>% 
+  select(alpha.3,everything()) %>% 
+  filter(!is.na(alpha.3))
 
-vdem <- vdem %>% 
-  select(Country=country_name,ISO=country_text_id,year,democracy_electoral_vdem=v2x_polyarchy,corruption_public_vdem=v2excrptps) %>% 
-  filter(year>1950)
+subsidy_b <- gather(subsidy_b,Year,subsidy_posttax_IMF,-Country,-alpha.3)
 
-save(vdem,file='Data/vdem.RData')
+subsidy <- left_join(subsidy_a,subsidy_b,by=c("alpha.3"="alpha.3","Year"="Year")) %>% mutate(Year=as.numeric(Year))
 
+pe <- left_join(pe,subsidy,by=c("ISO"="alpha.3","Year"="Year"))
 
-######### CC Laws
+############### join SWIID ###############
 
-laws <- read.csv('Data/CCLaws.csv',sep=',') %>% 
-  mutate(Country=tolower(Country))
-ISOs <- read.xlsx('C:/Users/lamw/Documents/SpiderOak Hive/Work/Code/R/.Place names and codes/output/ISOcodes.xlsx','alternative_names',encoding = 'UTF-8') %>% 
-  mutate(alternative.name=tolower(alternative.name))
+#load('C:\\Users\\lamw\\Documents\\SpiderOak Hive\\Work\\Code\\R\\Database\\SWIID\\SWIID.RData')
+#pe <- left_join(pe,swiid_summary %>% select(ISO,year,gini_disp),by=c("ISO"="ISO","Year"="year"))
+#rm(swiid_summary)
 
-laws <- left_join(laws,ISOs %>% select(alternative.name,alpha.3),by=c("Country"="alternative.name")) %>% 
-  select(Country,ISO=alpha.3,everything())
+############### join regional values surveys ###############
 
-### plot ###
-# ISOs2 <- read.xlsx('C:/Users/lamw/Documents/SpiderOak Hive/Work/Code/R/.Place names and codes/output/ISOcodes.xlsx','ISO_master',encoding = 'UTF-8') %>% 
-#   select(alpha.3,region)
-# library(gridExtra)
-# laws <- left_join(laws,ISOs2,by=c("ISO"="alpha.3"))
-# plots <- list()
-# 
-# plots[[1]] <- laws %>% 
-#   filter(grepl("Law|Plan|Policy|Strategy",Document.Type)) %>% 
-#   group_by(Year.Passed,Document.Type) %>%
-#   summarise(no.laws=n()) %>% 
-#   ggplot(.,aes(x=Year.Passed,y=no.laws,fill=Document.Type)) +
-#   geom_bar(stat='identity')+
-#   xlim(1990,2018)
-# 
-# plots[[2]] <- laws %>% 
-#   filter(grepl("Law|Plan|Policy|Strategy",Document.Type)) %>% 
-#   group_by(Year.Passed,region) %>%
-#   summarise(no.laws=n()) %>% 
-#   ggplot(.,aes(x=Year.Passed,y=no.laws,fill=region)) +
-#   geom_bar(stat='identity')+
-#   xlim(1990,2018)
-# 
-# do.call(grid.arrange,c(plots,ncol=1))
+load('Data/WVS.RData')
 
-# remove frameworks
-# laws <- laws %>% 
-#   filter(!grepl("Mitigation and adaptation",Framework)) %>% 
-#   filter(!grepl("mitigation and adaptation",Framework)) %>% 
-#   filter(!grepl("Mitigation",Framework)) %>% 
-#   filter(!grepl("Adaptation",Framework)) %>% 
-#   filter(!grepl("mitigation",Framework))
+pe <- left_join(pe,WVS %>% select(ISO,trust_first,trust_last),by=c("ISO"="ISO"))
+rm(WVS)
 
-# remove adaptation only laws
-laws <- laws[grep("^Adaptation*$",laws$Framework,invert=TRUE),]
-laws <- laws[grep("^(Adaptation)*$",laws$Categories,invert=TRUE),]
-laws <- laws[grep("^(Adaptation; Institutions / Administrative arrangements)*$",laws$Categories,invert=TRUE),]
+############### join vdem ############### 
+
+load('Data/vdem.RData')
+pe <- left_join(pe,vdem %>% select(-Country),by=c("ISO"="ISO","Year"="year"))
+rm(vdem)
+
+############### join laws ############### 
+
+load('Data/laws.RData')
+pe <- left_join(pe,laws %>% ungroup %>% select(-Country),by=c("ISO"="ISO"))
+rm(laws)
+
+############### join Gallup ############### 
+
+gallup <- read.xlsx('Data/GallupData3.xlsx',sheetName = 'CombinedData')
+gallup <- left_join(gallup %>% mutate(Country=tolower(Country)),ISOs,by=c("Country"="alternative.name")) %>% 
+  select(alpha.3,climate_aware = AWARE_C,climate_human = HUMAN_C) %>% 
+  filter(climate_aware!=0,climate_human!=0) %>% 
+  mutate(Year=2008)
+
+pe <- left_join(pe,gallup,by=c("ISO"="alpha.3","Year"="Year"))
 
 
+save(pe,file='Data/pe.RData')
 
-## aggregate
-laws <- laws %>% 
-  group_by(Country,ISO) %>% 
-  summarise(laws=n())
 
-save(laws,file='Data/laws.RData')
