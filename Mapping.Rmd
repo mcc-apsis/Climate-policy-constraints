@@ -300,6 +300,7 @@ tt <- tt %>%
 plots <- list()
 
 plots[[1]] <- tt %>% 
+  filter(Year==2017) %>% 
   ggplot(.,aes(x=gov_corrup_90s,y=gov_corrup_10s,fill=cluster,size=pop_UN)) + 
   geom_point(pch=21,stroke=0.5,colour="#636363") +
   scale_size_continuous(range = c(1,10)) +
@@ -310,8 +311,10 @@ plots[[1]] <- tt %>%
   
   
 plots[[2]] <- tt %>% 
-  ggplot(.,aes(x=democracy_90s,y=democracy_10s,fill=cluster,size=pop_UN)) +
+  filter(Year==2017) %>% 
+  ggplot(.,aes(x=democracy_90s,y=democracy_10s,fill=cluster,size=pop_UN,label=ISO)) +
   geom_point(pch=21,stroke=0.5,colour="#636363") +
+  geom_text() +
   scale_size_continuous(range = c(1,10)) +
   geom_abline(intercept=0,slope=1) +
   xlim(0,1) +
@@ -319,6 +322,7 @@ plots[[2]] <- tt %>%
   theme(legend.position="none")
 
 plots[[3]] <- tt %>%
+  filter(Year==2017) %>% 
   ggplot(.,aes(x=oilgas_rrents_90s,y=oilgas_rrents_10s,fill=cluster,size=pop_UN)) +
   geom_point(pch=21,stroke=0.5,colour="#636363") +
   scale_size_continuous(range = c(1,10)) +
@@ -328,6 +332,7 @@ plots[[3]] <- tt %>%
   ylim(0,60)
 
 plots[[4]] <- tt %>%
+  filter(Year==2017) %>% 
   ggplot(.,aes(x=coal_90s,y=coal_10s,fill=cluster,size=pop_UN)) +
   geom_point(pch=21,stroke=0.5,colour="#636363") +
   scale_size_continuous(range = c(1,10)) +
@@ -335,8 +340,10 @@ plots[[4]] <- tt %>%
   theme(legend.position="none")
 
 plots[[5]] <- tt %>%
-  ggplot(.,aes(x=trust_90s,y=trust_10s,fill=cluster,size=pop_UN)) +
+  filter(Year==2017) %>% 
+  ggplot(.,aes(x=trust_90s,y=trust_10s,fill=cluster,size=pop_UN,label=ISO)) +
   geom_point(pch=21,stroke=0.5,colour="#636363") +
+  geom_text() +
   scale_size_continuous(range = c(1,10)) +
   geom_abline(intercept=0,slope=1) +
   theme(legend.position="none")+
