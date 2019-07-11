@@ -15,12 +15,14 @@ WVS$trust[WVS$trust == 2] <- 0     #"Can't be too careful"
 WVS$trust[WVS$trust == -2] <- NA   
 
 ISOs <- read.xlsx('C:/Users/lamw/Documents/SpiderOak Hive/Work/Code/R/.Place names and codes/output/ISOcodes.xlsx','ISO_master',encoding = 'UTF-8')
-WVS <- left_join(WVS,ISOs <- ISOs %>% select(name,ISO=alpha.3,country.code),by=c("S003"="country.code"))
+WVS <- left_join(WVS,ISOs <- ISOs %>% select(Country,Code,numeric.code),by=c("S003"="numeric.code"))
 
 WVS <- WVS %>% 
-  select(-S003,trust)
+  select(-S003,trust) %>% 
+  filter(trust>=0)
+
 WVS <- WVS %>% 
-  group_by(name,ISO,wave) %>% 
+  group_by(Country,ISO=Code,wave) %>% 
   summarise(WVS_trust=mean(trust,na.rm=T))
 
 WVS$wave[WVS$wave==1] <- '1981-1984'
@@ -30,7 +32,7 @@ WVS$wave[WVS$wave==4] <- '1999-2004'
 WVS$wave[WVS$wave==5] <- '2005-2008'
 WVS$wave[WVS$wave==6] <- '2010-2012'
 
-WVS <- dcast(WVS,name + ISO~wave,value.var='WVS_trust')
+WVS <- dcast(WVS,Country + ISO~wave,value.var='WVS_trust')
 
 
 # European
@@ -40,7 +42,9 @@ EVS <- EVS %>%
   select(name=S003,wave=S002EVS,A165)
 EVS$trust[grepl("Most people can be trusted",EVS$A165)] <- 1
 EVS$trust[grepl("Can´t be too careful",EVS$A165)] <- 0
+
 EVS <- EVS %>% 
+  filter(trust>=0) %>% 
   group_by(name,wave) %>% 
   summarise(EVS_trust=mean(trust,na.rm=T))
 
@@ -60,7 +64,9 @@ LAVS <- foreign::read.dta("Data/WVS/Latinobarometro2017Eng_v20180117.dta") %>%
   select(name=idenpa,P13STGBS)
 LAVS$trust[grepl("One can never be too careful when dealing with others",LAVS$P13STGBS)] <- 0
 LAVS$trust[grepl("Most people can be trusted",LAVS$P13STGBS)] <- 1
+
 LAVS <- LAVS %>% 
+  filter(trust>=0) %>% 
   group_by(name) %>% 
   summarise('2017'=mean(trust,na.rm=T))
 LAVS <- LAVS %>% 
@@ -77,6 +83,7 @@ AVS <- data.frame(AVS) %>%
 AVS$trust[grepl("Must be very careful",AVS$Q87)] <- 0
 AVS$trust[grepl("Most people can be trusted",AVS$Q87)] <- 1
 AVS <- AVS %>% 
+  filter(trust>=0) %>% 
   group_by(name) %>% 
   summarise('2016'=mean(trust,na.rm=T))
 
@@ -87,6 +94,7 @@ AVS_2 <- data.frame(AVS_2) %>%
 AVS_2$trust[grepl("You must be very careful",AVS_2$sctrust)] <- 0
 AVS_2$trust[grepl("Most people can be trusted",AVS_2$sctrust)] <- 1
 AVS_2 <- AVS_2 %>% 
+  filter(trust>=0) %>% 
   group_by(country) %>% 
   summarise('1999-2001'=mean(trust,na.rm=T))
 
@@ -99,7 +107,7 @@ AVS <- left_join(AVS,ISOs,by=c("name"="alternative.name"))
 
 
 ##########
-blarg <- full_join(WVS %>% select(-name),EVS %>% select(-name),by=c('ISO'='ISO'))
+blarg <- full_join(WVS %>% select(-Country),EVS %>% select(-name),by=c('ISO'='ISO'))
 blarg <- full_join(blarg,AVS %>% select(-name),b=c('ISO'='ISO'))
 blarg <- full_join(blarg,LAVS %>% select(-name),by=c('ISO'='ISO'))
 
@@ -122,7 +130,6 @@ blarg <- blarg %>%
   filter(!is.na(ISO))
 
 WVS <- blarg
-
 
 WVS <- WVS %>%
   arrange(ISO,wave) %>% 

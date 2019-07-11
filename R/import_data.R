@@ -21,7 +21,8 @@ subsidy_a <- left_join(subsidy_a %>% mutate(Country=tolower(Country)),ISOs
   select(alpha.3,everything()) %>% 
   filter(!is.na(alpha.3))
 
-subsidy_a <- gather(subsidy_a,Year,subsidy_pretax_IMF,-Country,-alpha.3)
+subsidy_a <- gather(subsidy_a,Year,subsidy_pretax_IMF,-Country,-alpha.3) %>% 
+  select(-Country)
 
 subsidy_b <- read.xlsx('Data/IMF_Fuel_Subsidies_short.xlsx',sheetName='Post-tax',startRow=2,encoding="UTF-8",check.names=FALSE)
 ISOs <- read.xlsx('C:/Users/lamw/Documents/SpiderOak Hive/Work/Code/R/.Place names and codes/output/ISOcodes.xlsx',sheetName='alternative_names')
@@ -31,7 +32,8 @@ subsidy_b <- left_join(subsidy_b %>% mutate(Country=tolower(Country)),ISOs
   select(alpha.3,everything()) %>% 
   filter(!is.na(alpha.3))
 
-subsidy_b <- gather(subsidy_b,Year,subsidy_posttax_IMF,-Country,-alpha.3)
+subsidy_b <- gather(subsidy_b,Year,subsidy_posttax_IMF,-Country,-alpha.3) %>% 
+  select(-Country)
 
 subsidy <- left_join(subsidy_a,subsidy_b,by=c("alpha.3"="alpha.3","Year"="Year")) %>% mutate(Year=as.numeric(Year))
 
@@ -57,6 +59,35 @@ pe <- left_join(pe,vdem %>% select(-Country),by=c("ISO"="ISO","Year"="year"))
 rm(vdem)
 
 ############### join laws ############### 
+
+laws <- read.csv('Data/CCLaws.csv',sep=',') %>%
+  mutate(Country=tolower(Country))
+ISOs <- read.xlsx('C:/Users/lamw/Documents/SpiderOak Hive/Work/Code/R/.Place names and codes/output/ISOcodes.xlsx','alternative_names',encoding = 'UTF-8') %>%
+  mutate(alternative.name=tolower(alternative.name))
+
+laws <- left_join(laws,ISOs %>% select(alternative.name,alpha.3),by=c("Country"="alternative.name")) %>%
+  select(Country,ISO=alpha.3,everything())
+
+# remove frameworks (nope don't do this)
+# laws <- laws %>%
+#   filter(!grepl("Mitigation and adaptation",Framework)) %>%
+#   filter(!grepl("mitigation and adaptation",Framework)) %>%
+#   filter(!grepl("Mitigation",Framework)) %>%
+#   filter(!grepl("Adaptation",Framework)) %>%
+#   filter(!grepl("mitigation",Framework))
+
+# remove adaptation only laws
+laws <- laws[grep("^Adaptation*$",laws$Framework,invert=TRUE),]
+laws <- laws[grep("^(Adaptation)*$",laws$Categories,invert=TRUE),]
+laws <- laws[grep("^(Adaptation; Institutions / Administrative arrangements)*$",laws$Categories,invert=TRUE),]
+
+## aggregate
+laws <- laws %>%
+  group_by(Country,ISO) %>%
+  summarise(laws=n())
+
+save(laws,file='Data/laws.RData')
+
 
 load('Data/laws.RData')
 pe <- left_join(pe,laws %>% ungroup %>% select(-Country),by=c("ISO"="ISO"))

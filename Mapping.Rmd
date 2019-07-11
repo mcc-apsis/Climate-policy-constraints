@@ -20,6 +20,7 @@ library(ggfortify)
 library(knitr)
 library(kableExtra)
 library(grid)
+library(ggplot2); theme_set(theme_bw())
 
 load('Data/pe.RData')
 
@@ -166,7 +167,7 @@ kable(summary_pca, format = "html", caption="PCA analysis",digits=2) %>%
 
 ######### scree plot
 
-scree_data <- comps$x[,1:4]
+scree_data <- comps$x[,1:5]
 wss <- (nrow(scree_data)-1)*sum(apply(scree_data,2,var))
   for (i in 2:15) wss[i] <- sum(kmeans(scree_data,
                                        centers=i)$withinss)
@@ -192,7 +193,7 @@ rm(scree_data,summary_pca)
 
 autoplot(comps,loadings=TRUE,loadings.label=TRUE,data=pc,label=TRUE,colour='cluster')
 
-mapdata <- left_join(world,pc,by=c("iso"="ISO"))
+mapdata <- left_join(world,pc %>% select(ISO,cluster),by=c("iso"="ISO"))
 
 mapdata %>%
   ggplot(.) +
@@ -314,7 +315,7 @@ plots[[2]] <- tt %>%
   filter(Year==2017) %>% 
   ggplot(.,aes(x=democracy_90s,y=democracy_10s,fill=cluster,size=pop_UN,label=ISO)) +
   geom_point(pch=21,stroke=0.5,colour="#636363") +
-  geom_text() +
+  #geom_text() +
   scale_size_continuous(range = c(1,10)) +
   geom_abline(intercept=0,slope=1) +
   xlim(0,1) +
@@ -343,7 +344,7 @@ plots[[5]] <- tt %>%
   filter(Year==2017) %>% 
   ggplot(.,aes(x=trust_90s,y=trust_10s,fill=cluster,size=pop_UN,label=ISO)) +
   geom_point(pch=21,stroke=0.5,colour="#636363") +
-  geom_text() +
+  #geom_text() +
   scale_size_continuous(range = c(1,10)) +
   geom_abline(intercept=0,slope=1) +
   theme(legend.position="none")+
@@ -369,7 +370,7 @@ do.call(grid.arrange,c(plots,ncol=2))
 
 p1 <- ch %>% 
   filter(pop_UN>1e6) %>% 
-  top_n(25,rrents_oilgas_WB) %>% 
+  top_n(20,rrents_oilgas_WB) %>% 
   ggplot(.,aes(x=reorder(Country,rrents_oilgas_WB),y=rrents_oilgas_WB)) +
   geom_bar(stat='identity',fill="#74a9cf") +
   geom_hline(yintercept=mean(ch$rrents_oilgas_WB,na.rm=T),color='#525252',size=1) +
@@ -380,7 +381,7 @@ p1 <- ch %>%
 
 p2 <- ch %>% 
   filter(pop_UN>1e6) %>% 
-  top_n(25,ene_share_coal) %>% 
+  top_n(20,ene_share_coal) %>% 
   ggplot(.,aes(x=reorder(Country,ene_share_coal),y=ene_share_coal)) +
   geom_bar(stat='identity',fill="#74a9cf") +
   geom_hline(yintercept=mean(ch$ene_share_coal,na.rm=T),color='#525252',size=1) +
@@ -389,9 +390,54 @@ p2 <- ch %>%
   geom_text(aes(x=5,y=mean(ch$ene_share_coal,na.rm=T)-0.03,label="World Average"),angle=90,color='#252525') +
   theme(axis.title.y = element_blank())
 
+p3 <- ch %>% 
+  filter(pop_UN>1e6) %>% 
+  top_n(-20,democracy_electoral_vdem) %>% 
+  ggplot(.,aes(x=reorder(Country,democracy_electoral_vdem),y=democracy_electoral_vdem)) +
+  geom_bar(stat='identity',fill="#74a9cf") +
+  geom_hline(yintercept=mean(ch$democracy_electoral_vdem,na.rm=T),color='#525252',size=1) +
+  ylab("Electoral democracy index") +
+  coord_flip() +
+  geom_text(aes(x=5,y=mean(ch$democracy_electoral_vdem,na.rm=T)-0.06,label="World Average"),angle=90,color='#252525') +
+  theme(axis.title.y = element_blank())
+
+p4 <- ch %>% 
+  filter(pop_UN>1e6) %>% 
+  top_n(-20,gov_corrupt_WGI) %>% 
+  ggplot(.,aes(x=reorder(Country,gov_corrupt_WGI),y=gov_corrupt_WGI)) +
+  geom_bar(stat='identity',fill="#74a9cf") +
+  geom_hline(yintercept=mean(ch$gov_corrupt_WGI,na.rm=T),color='#525252',size=1) +
+  ylab("Control of corruption index") +
+  coord_flip() +
+  geom_text(aes(x=5,y=mean(ch$gov_corrupt_WGI,na.rm=T)-0.05,label="World Average"),angle=90,color='#252525') +
+  theme(axis.title.y = element_blank())
+
+p5 <- ch %>% 
+  filter(pop_UN>1e6) %>% 
+  top_n(-20,climate_aware) %>% 
+  ggplot(.,aes(x=reorder(Country,climate_aware),y=climate_aware)) +
+  geom_bar(stat='identity',fill="#74a9cf") +
+  geom_hline(yintercept=mean(ch$climate_aware,na.rm=T),color='#525252',size=1) +
+  ylab("Climate awareness (% of people who are aware of climate change)") +
+  coord_flip() +
+  geom_text(aes(x=5,y=mean(ch$climate_aware,na.rm=T)-1.35,label="World Average"),angle=90,color='#252525') +
+  theme(axis.title.y = element_blank())
+
+p6 <- ch %>% 
+  filter(pop_UN>1e6) %>% 
+  top_n(-20,trust_last) %>% 
+  ggplot(.,aes(x=reorder(Country,trust_last),y=trust_last*100)) +
+  geom_bar(stat='identity',fill="#74a9cf") +
+  geom_hline(yintercept=mean(ch$trust_last,na.rm=T)*100,color='#525252',size=1) +
+  ylab("Trust (% of people who agree 'most people can be trusted')") +
+  coord_flip() +
+  geom_text(aes(x=5,y=mean(ch$trust_last,na.rm=T)*100-1.35,label="World Average"),angle=90,color='#252525') +
+  theme(axis.title.y = element_blank())
+
 library(ggpubr)
 ggarrange(p1,p2,nrow=2)
-
+ggarrange(p3,p4,nrow=2)
+ggarrange(p5,p6,nrow=2)
 
 ```
 
@@ -404,7 +450,7 @@ world <- pe %>% filter(Year==2017,ISO=="WLD") %>% select(co2_terr_GCB,pop_UN)
 blarg <- pc %>% 
   group_by(cluster) %>% 
   summarise(co2=sum(co2_terr_GCB),pop=sum(pop_UN),countries=paste(Country,collapse="; ")) %>% 
-  mutate(co2=co2/world$co2_terr_GCB[[1]],pop=pop/world$pop_UN[[1]])
+  mutate(co2_frac=co2/world$co2_terr_GCB[[1]],pop_frac=pop/world$pop_UN[[1]])
 
 openxlsx::write.xlsx(blarg,"Results/results.xlsx",sheetName="cluster_description",row.names=F)
 
@@ -416,53 +462,53 @@ openxlsx::write.xlsx(blarg,"Results/results.xlsx",sheetName="cluster_description
 
 
 ### sum coal and lignite production, bring to latest year
-# pe <- pe %>% 
-#   group_by(Country) %>% 
-#   mutate(fossil_coal_hard_production=na.locf(fossil_coal_hard_production,na.rm=FALSE)) %>% 
-#   mutate(fossil_coal_lignite_production=na.locf(fossil_coal_lignite_production,na.rm=FALSE)) %>% 
-#   mutate(fossil_coal_hard_RSV=na.locf(fossil_coal_hard_RSV,na.rm=FALSE)) %>% 
-#   mutate(fossil_coal_lignite_RSV=na.locf(fossil_coal_lignite_RSV,na.rm=FALSE)) %>% 
-#   group_by(Country,Year) %>% 
-#   mutate(coal_production=sum(fossil_coal_hard_production,fossil_coal_lignite_production,na.rm = TRUE)) %>% 
-#   mutate(coal_reserves=sum(fossil_coal_lignite_RSV,fossil_coal_hard_RSV,na.rm=TRUE)) %>% 
-#   mutate(coal_production=ifelse(coal_production==0,NA,coal_production)) %>% 
-#   mutate(coal_reserves=ifelse(coal_reserves==0,NA,coal_reserves))
-#   
-# 
-# 
-# risks <- pe %>% 
-#   select(Country,ISO,Year,co2_terr_GCB,committed_coal_planned,
-#          fossil_coal_hard_RSV,fossil_coal_lignite_RSV,fossil_gas_RSV,fossil_oil_RSV,pop_UN) %>% 
-#   group_by(Country) %>% 
-#   mutate_all(funs(na.locf(.,na.rm=FALSE))) %>% 
-#   ungroup() %>% 
-#   filter(Year==2015) %>% 
-#   filter(Country!="World")
-# 
-# risks <- left_join(risks,pc %>% select(ISO,cluster),by=c("ISO"="ISO"))
-# 
-# risks <- risks %>%
-#   mutate_at(vars(-Country,-ISO,-Year,-cluster),funs(total=sum(.)),na.rm=TRUE)
-# 
-# risk_summary <- risks %>% 
-#   group_by(cluster) %>% 
-#   summarise(countries=paste(Country, collapse=","),
-#             pop=sum(pop_UN,na.rm=TRUE)/pe$pop_UN[pe$Country=="World" & pe$Year==2015][1],
-#             co2_terr_GCB=sum(co2_terr_GCB,na.rm=TRUE)/pe$co2_terr_GCB[pe$Country=="World" & pe$Year==2015][1],
-#             committed_coal_planned=sum(committed_coal_planned,na.rm=TRUE)/first(committed_coal_planned_total),
-#             fossil_coal_hard_RSV=sum(fossil_coal_hard_RSV,na.rm=TRUE)/first(fossil_coal_hard_RSV_total),
-#             fossil_coal_lignite_RSV=sum(fossil_coal_lignite_RSV,na.rm=TRUE)/first(fossil_coal_lignite_RSV_total),
-#             fossil_gas_RSV=sum(fossil_gas_RSV,na.rm=TRUE)/first(fossil_gas_RSV_total),
-#             fossil_oil_RSV=sum(fossil_oil_RSV,na.rm=TRUE)/first(fossil_oil_RSV_total))
-# 
-# 
-# gather(risk_summary,key,value,-countries,-cluster,-pop,-co2_terr_GCB) %>%
-#   filter(!is.na(cluster)) %>% 
-#   ggplot(.,aes(x=key,y=value,fill=cluster)) +
-#   geom_bar(stat='identity') +
-#   facet_grid(.~cluster) +
-#   theme(axis.text.x = element_text(angle = 90, hjust = 1,vjust=0.35)) +
-#   theme(legend.position = "none",axis.title = element_blank())
+pe <- pe %>%
+  group_by(Country) %>%
+  mutate(fossil_coal_hard_production=na.locf(fossil_coal_hard_production,na.rm=FALSE)) %>%
+  mutate(fossil_coal_lignite_production=na.locf(fossil_coal_lignite_production,na.rm=FALSE)) %>%
+  mutate(fossil_coal_hard_RSV=na.locf(fossil_coal_hard_RSV,na.rm=FALSE)) %>%
+  mutate(fossil_coal_lignite_RSV=na.locf(fossil_coal_lignite_RSV,na.rm=FALSE)) %>%
+  group_by(Country,Year) %>%
+  mutate(coal_production=sum(fossil_coal_hard_production,fossil_coal_lignite_production,na.rm = TRUE)) %>%
+  mutate(coal_reserves=sum(fossil_coal_lignite_RSV,fossil_coal_hard_RSV,na.rm=TRUE)) %>%
+  mutate(coal_production=ifelse(coal_production==0,NA,coal_production)) %>%
+  mutate(coal_reserves=ifelse(coal_reserves==0,NA,coal_reserves))
+
+
+
+risks <- pe %>%
+  select(Country,ISO,Year,co2_terr_GCB,
+         fossil_coal_hard_RSV,fossil_coal_lignite_RSV,fossil_gas_RSV,fossil_oil_RSV,pop_UN) %>%
+  group_by(Country) %>%
+  mutate_all(funs(na.locf(.,na.rm=FALSE))) %>%
+  ungroup() %>%
+  filter(Year==2015) %>%
+  filter(Country!="World")
+
+risks <- left_join(risks,pc %>% select(ISO,cluster),by=c("ISO"="ISO"))
+
+risks <- risks %>%
+  mutate_at(vars(-Country,-ISO,-Year,-cluster),funs(total=sum(.)),na.rm=TRUE)
+
+risk_summary <- risks %>%
+  group_by(cluster) %>%
+  summarise(countries=paste(Country, collapse=","),
+            pop=sum(pop_UN,na.rm=TRUE)/pe$pop_UN[pe$Country=="World" & pe$Year==2015][1],
+            co2_terr_GCB=sum(co2_terr_GCB,na.rm=TRUE)/pe$co2_terr_GCB[pe$Country=="World" & pe$Year==2015][1],
+            #committed_coal_planned=sum(committed_coal_planned,na.rm=TRUE)/first(committed_coal_planned_total),
+            fossil_coal_hard_RSV=sum(fossil_coal_hard_RSV,na.rm=TRUE)/first(fossil_coal_hard_RSV_total),
+            fossil_coal_lignite_RSV=sum(fossil_coal_lignite_RSV,na.rm=TRUE)/first(fossil_coal_lignite_RSV_total),
+            fossil_gas_RSV=sum(fossil_gas_RSV,na.rm=TRUE)/first(fossil_gas_RSV_total),
+            fossil_oil_RSV=sum(fossil_oil_RSV,na.rm=TRUE)/first(fossil_oil_RSV_total))
+
+
+gather(risk_summary,key,value,-countries,-cluster,-pop,-co2_terr_GCB) %>%
+  filter(!is.na(cluster)) %>%
+  ggplot(.,aes(x=key,y=value,fill=cluster)) +
+  geom_bar(stat='identity') +
+  facet_grid(.~cluster) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1,vjust=0.35)) +
+  theme(legend.position = "none",axis.title = element_blank())
 
 
 
