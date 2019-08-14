@@ -129,7 +129,28 @@ gather(ch,key,value,risk$vars) %>%
 ### correlation plots ### 
 
 library(ggcorrplot)
-corr_data <- round(cor(ch %>% select(risk$vars),method="spearman",use="complete.obs"),2)
+
+
+z <- ch %>% select(Country,risk$vars)
+z <- gather(z,key,value,-Country)
+z <- z %>% 
+  mutate(key =ifelse(key=="co2_terr_pc","CO2 emissions",key)) %>% 
+  mutate(key =ifelse(key=="laws","Climate laws",key)) %>% 
+  mutate(key =ifelse(key=="subsidy_pretax_IMF_gdp","Fossil subsidies",key)) %>% 
+  mutate(key =ifelse(key=="rrents_oilgas_WB","Oil & gas rents",key)) %>% 
+  mutate(key =ifelse(key=="ene_share_coal","Coal share",key)) %>% 
+  mutate(key =ifelse(key=="democracy_electoral_vdem","Democracy",key)) %>% 
+  mutate(key =ifelse(key=="gov_corrupt_WGI","Corruption",key)) %>% 
+  mutate(key =ifelse(key=="trust_last","Trust",key)) %>% 
+  mutate(key =ifelse(key=="climate_aware","Climate awareness",key))
+
+z$key <- as.factor(z$key)
+z$key <- factor(z$key,levels(z$key)[c(1,9,5,6,4,8,3,7,2)])
+
+z <- spread(z,key,value)
+
+
+corr_data <- round(cor(z %>% select(-Country),method="spearman",use="complete.obs"),2)
 ggcorrplot(corr_data,type="upper",
            ggtheme = ggplot2::theme_gray,
    colors = c("#6D9EC1", "white", "#E46726"),lab=TRUE)
@@ -302,8 +323,9 @@ plots <- list()
 
 plots[[1]] <- tt %>% 
   filter(Year==2017) %>% 
-  ggplot(.,aes(x=gov_corrup_90s,y=gov_corrup_10s,fill=cluster,size=pop_UN)) + 
+  ggplot(.,aes(x=gov_corrup_90s,y=gov_corrup_10s,fill=cluster,size=pop_UN,label=ISO)) + 
   geom_point(pch=21,stroke=0.5,colour="#636363") +
+  geom_text(size=4)+
   scale_size_continuous(range = c(1,10)) +
   geom_abline(intercept=0,slope=1) +
   #xlim(-2,2) +
@@ -315,7 +337,7 @@ plots[[2]] <- tt %>%
   filter(Year==2017) %>% 
   ggplot(.,aes(x=democracy_90s,y=democracy_10s,fill=cluster,size=pop_UN,label=ISO)) +
   geom_point(pch=21,stroke=0.5,colour="#636363") +
-  #geom_text() +
+  geom_text(size=4) +
   scale_size_continuous(range = c(1,10)) +
   geom_abline(intercept=0,slope=1) +
   xlim(0,1) +
@@ -324,8 +346,9 @@ plots[[2]] <- tt %>%
 
 plots[[3]] <- tt %>%
   filter(Year==2017) %>% 
-  ggplot(.,aes(x=oilgas_rrents_90s,y=oilgas_rrents_10s,fill=cluster,size=pop_UN)) +
+  ggplot(.,aes(x=oilgas_rrents_90s,y=oilgas_rrents_10s,fill=cluster,size=pop_UN,label=ISO)) +
   geom_point(pch=21,stroke=0.5,colour="#636363") +
+  geom_text(size=3)+
   scale_size_continuous(range = c(1,10)) +
   geom_abline(intercept=0,slope=1) +
   theme(legend.position="none") +
@@ -334,31 +357,32 @@ plots[[3]] <- tt %>%
 
 plots[[4]] <- tt %>%
   filter(Year==2017) %>% 
-  ggplot(.,aes(x=coal_90s,y=coal_10s,fill=cluster,size=pop_UN)) +
+  ggplot(.,aes(x=coal_90s,y=coal_10s,fill=cluster,size=pop_UN,label=ISO)) +
   geom_point(pch=21,stroke=0.5,colour="#636363") +
+  geom_text()+
   scale_size_continuous(range = c(1,10)) +
   geom_abline(intercept=0,slope=1) +
   theme(legend.position="none")
 
-plots[[5]] <- tt %>%
-  filter(Year==2017) %>% 
-  ggplot(.,aes(x=trust_90s,y=trust_10s,fill=cluster,size=pop_UN,label=ISO)) +
-  geom_point(pch=21,stroke=0.5,colour="#636363") +
-  #geom_text() +
-  scale_size_continuous(range = c(1,10)) +
-  geom_abline(intercept=0,slope=1) +
-  theme(legend.position="none")+
-  xlim(0,0.75)+
-  ylim(0,0.75)
-
-plots[[6]] <- tt %>% 
-  ggplot(.,aes(x=subsidies_2010,y=subsidies_2017,fill=cluster,size=pop_UN)) + 
-  geom_point(pch=21,stroke=0.5,colour="#636363") +
-  scale_size_continuous(range = c(1,10)) +
-  geom_abline(intercept=0,slope=1) +
-  xlim(0,1.5e-10) +
-  ylim(0,1.5e-10) +
-  theme(legend.position="none")
+# plots[[5]] <- tt %>%
+#   filter(Year==2017) %>% 
+#   ggplot(.,aes(x=trust_90s,y=trust_10s,fill=cluster,size=pop_UN,label=ISO)) +
+#   geom_point(pch=21,stroke=0.5,colour="#636363") +
+#   #geom_text() +
+#   scale_size_continuous(range = c(1,10)) +
+#   geom_abline(intercept=0,slope=1) +
+#   theme(legend.position="none")+
+#   xlim(0,0.75)+
+#   ylim(0,0.75)
+# 
+# plots[[6]] <- tt %>% 
+#   ggplot(.,aes(x=subsidies_2010,y=subsidies_2017,fill=cluster,size=pop_UN)) + 
+#   geom_point(pch=21,stroke=0.5,colour="#636363") +
+#   scale_size_continuous(range = c(1,10)) +
+#   geom_abline(intercept=0,slope=1) +
+#   xlim(0,1.5e-10) +
+#   ylim(0,1.5e-10) +
+#   theme(legend.position="none")
 
 do.call(grid.arrange,c(plots,ncol=2))
 
@@ -510,6 +534,19 @@ gather(risk_summary,key,value,-countries,-cluster,-pop,-co2_terr_GCB) %>%
   theme(axis.text.x = element_text(angle = 90, hjust = 1,vjust=0.35)) +
   theme(legend.position = "none",axis.title = element_blank())
 
+
+
+```
+
+```{r save_data,echo=FALSE,warning=FALSE}
+
+
+data <- ch %>%
+  select(-region_IAM10,-region_RCP5,-Year)
+
+data <- left_join(data,pc %>% select(ISO,cluster),by=c("ISO"="ISO"))
+
+openxlsx::write.xlsx(data,file="Results/data.xlsx",sheetName="data",row.names=FALSE)
 
 
 ```
