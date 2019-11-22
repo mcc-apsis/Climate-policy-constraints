@@ -287,7 +287,7 @@ cluster_summary %>%
 ```
 
 
-```{r cluster_trends,echo=FALSE,warning=FALSE,fig.width=8,fig.height=8,fig.path="Results/Plots/",dev=c('png','pdf')}
+```{r country_trends,echo=FALSE,warning=FALSE,fig.width=8,fig.height=8,fig.path="Results/Plots/",dev=c('png','pdf')}
 
 
 tt <- pe %>%
@@ -361,6 +361,110 @@ plots[[4]] <- tt %>%
   geom_point(pch=21,stroke=0.5,colour="#636363") +
   geom_text()+
   scale_size_continuous(range = c(1,10)) +
+  geom_abline(intercept=0,slope=1) +
+  theme(legend.position="none")
+
+# plots[[5]] <- tt %>%
+#   filter(Year==2017) %>% 
+#   ggplot(.,aes(x=trust_90s,y=trust_10s,fill=cluster,size=pop_UN,label=ISO)) +
+#   geom_point(pch=21,stroke=0.5,colour="#636363") +
+#   #geom_text() +
+#   scale_size_continuous(range = c(1,10)) +
+#   geom_abline(intercept=0,slope=1) +
+#   theme(legend.position="none")+
+#   xlim(0,0.75)+
+#   ylim(0,0.75)
+# 
+# plots[[6]] <- tt %>% 
+#   ggplot(.,aes(x=subsidies_2010,y=subsidies_2017,fill=cluster,size=pop_UN)) + 
+#   geom_point(pch=21,stroke=0.5,colour="#636363") +
+#   scale_size_continuous(range = c(1,10)) +
+#   geom_abline(intercept=0,slope=1) +
+#   xlim(0,1.5e-10) +
+#   ylim(0,1.5e-10) +
+#   theme(legend.position="none")
+
+do.call(grid.arrange,c(plots,ncol=2))
+
+#rm(plots)
+```
+
+```{r cluster_trends,echo=FALSE,warning=FALSE,fig.width=8,fig.height=8,fig.path="Results/Plots/",dev=c('png','pdf')}
+
+
+tt <- pe %>%
+  select(c("Country","ISO","Year","pop_UN","region_IAM10","region_RCP5",risk$vars,"trust_first")) %>%
+  filter(Country!="World")
+
+#1996 - 2000 average
+#2010 - 2014 average
+
+tt <- left_join(tt,pc %>% rownames_to_column(var="Country") %>%
+                  select(Country,cluster),by=("Country"="Country"))
+
+blarg <- tt %>% 
+  filter(Year>=1995 & Year<=2000) %>% 
+  select(cluster,Country,Year,rrents_oilgas_WB) %>% 
+  filter(cluster==1)
+
+blarg <- tt %>% 
+  filter(Year>=2015) %>% 
+  select(cluster,Country,Year,subsidy_pretax_IMF_gdp) %>% 
+  filter(cluster==1)
+
+tt <- tt %>%
+  filter(!is.na(cluster)) %>% 
+  group_by(cluster) %>%
+  summarise(
+            gov_corrup_90s=mean(gov_corrupt_WGI[which(Year>=1996 & Year<=2000)]),
+            gov_corrup_10s=mean(gov_corrupt_WGI[which(Year>=2010 & Year<=2014)]),
+            democracy_90s=mean(democracy_electoral_vdem[which(Year>=1995 & Year<=2000)]),
+            democracy_10s=mean(democracy_electoral_vdem[which(Year>=2010 & Year<=2014)]),
+            oilgas_rrents_90s=mean(rrents_oilgas_WB[which(Year>=1995 & Year<=2000)]),
+            oilgas_rrents_10s=mean(rrents_oilgas_WB[which(Year>=2010 & Year<=2014)]),
+            coal_90s=mean(ene_share_coal[which(Year>=1995 & Year <=2000)]),
+            coal_10s=mean(ene_share_coal[which(Year>=2010 & Year <=2013)]),
+            trust_10s=mean(trust_last),
+            trust_90s=mean(trust_first),
+            subsidies_2010=mean(subsidy_pretax_IMF_gdp[which(Year==2010)]),
+            subsidies_2017=mean(subsidy_pretax_IMF_gdp[which(Year==2017)])
+            );
+         
+         
+plots <- list()
+
+plots[[1]] <- tt %>% 
+  ggplot(.,aes(x=gov_corrup_90s,y=gov_corrup_10s,fill=cluster,size=5,label=cluster)) + 
+  geom_point(pch=21,stroke=0.5,colour="#636363") +
+  geom_text() +
+  geom_abline(intercept=0,slope=1) +
+  #xlim(-2,2) +
+  #ylim(-2,2) +
+  theme(legend.position="none")
+  
+  
+plots[[2]] <- tt %>% 
+  ggplot(.,aes(x=democracy_90s,y=democracy_10s,fill=cluster,size=5,label=cluster)) +
+  geom_point(pch=21,stroke=0.5,colour="#636363") +
+  geom_text() +
+  geom_abline(intercept=0,slope=1) +
+  xlim(0,1) +
+  ylim(0,1) +
+  theme(legend.position="none")
+
+plots[[3]] <- tt %>%
+  ggplot(.,aes(x=oilgas_rrents_90s,y=oilgas_rrents_10s,fill=cluster,size=5,label=cluster)) +
+  geom_point(pch=21,stroke=0.5,colour="#636363") +
+  geom_text() +
+  geom_abline(intercept=0,slope=1) +
+  theme(legend.position="none") +
+  xlim(0,60)+
+  ylim(0,60)
+
+plots[[4]] <- tt %>%
+  ggplot(.,aes(x=coal_90s,y=coal_10s,fill=cluster,size=5,label=cluster)) +
+  geom_point(pch=21,stroke=0.5,colour="#636363") +
+  geom_text() +
   geom_abline(intercept=0,slope=1) +
   theme(legend.position="none")
 
@@ -486,7 +590,7 @@ openxlsx::write.xlsx(blarg,"Results/results.xlsx",sheetName="cluster_description
 
 
 ### sum coal and lignite production, bring to latest year
-pe <- pe %>%
+ff <- pe %>%
   group_by(Country) %>%
   mutate(fossil_coal_hard_production=na.locf(fossil_coal_hard_production,na.rm=FALSE)) %>%
   mutate(fossil_coal_lignite_production=na.locf(fossil_coal_lignite_production,na.rm=FALSE)) %>%
@@ -499,8 +603,7 @@ pe <- pe %>%
   mutate(coal_reserves=ifelse(coal_reserves==0,NA,coal_reserves))
 
 
-
-risks <- pe %>%
+risks <- ff %>%
   select(Country,ISO,Year,co2_terr_GCB,
          fossil_coal_hard_RSV,fossil_coal_lignite_RSV,fossil_gas_RSV,fossil_oil_RSV,pop_UN) %>%
   group_by(Country) %>%
