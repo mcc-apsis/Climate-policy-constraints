@@ -2,6 +2,7 @@
 rm(list=ls())
 
 library(tidyverse)
+library(xlsx)
 
 
 load('Data/pe.RData')
@@ -22,7 +23,6 @@ ISOs <- read.xlsx('C:/Users/lamw/Documents/SpiderOak Hive/Work/Code/R/.Place nam
 laws <- left_join(laws,ISOs %>% select(alternative.name,alpha.3),by=c("Country"="alternative.name")) %>%
   select(Country,ISO=alpha.3,everything())
 
-# remove frameworks (nope don't do this)
 # laws <- laws %>%
 #   filter(!grepl("Mitigation and adaptation",Framework)) %>%
 #   filter(!grepl("mitigation and adaptation",Framework)) %>%
@@ -36,15 +36,20 @@ laws <- laws[grep("^(Adaptation)*$",laws$Categories,invert=TRUE),]
 laws <- laws[grep("^(Adaptation; Institutions / Administrative arrangements)*$",laws$Categories,invert=TRUE),]
 
 
+############### join carbon pricing gap (OECD) ###############
+
+carbon_pricing <- read.xlsx('Data/OECD Carbon-pricing-gap-by-country-ecr2018.xlsx',sheetName='Carbon Pricing Gap - EUR 60',startRow=4,endRow = 46) %>%
+  select(ISO=NA.,carbon_price_gap=X2015)
+jd <- left_join(jd,carbon_pricing,by=c("ISO"="ISO"))
+rm(carbon_pricing)
+
+
+
+
+
 save(jd,laws,file='Data for Johannes/data.Rdata')
 
 openxlsx::write.xlsx(jd,file="Data for Johannes/all_data.xlsx",sheetName="data",row.names=FALSE)
 openxlsx::write.xlsx(laws,file="Data for Johannes/laws.xlsx",sheetName="data",row.names=FALSE)
 
 
-############### join carbon pricing gap (OECD) ###############
-
-# carbon_pricing <- read.xlsx('Data/OECD Carbon-pricing-gap-by-country-ecr2018.xlsx',sheetName='Carbon Pricing Gap - EUR 60',startRow=4,endRow = 46) %>%
-#   select(ISO=NA.,carbon_price_gap=X2015)
-# pe <- left_join(pe,carbon_pricing,by=c("ISO"="ISO"))
-# rm(carbon_pricing)
