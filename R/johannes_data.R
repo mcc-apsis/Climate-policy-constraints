@@ -7,7 +7,18 @@ library(xlsx)
 
 load('Data/pe.RData')
 
-jd <- pe %>% 
+# iea <- pe %>% 
+#   group_by(Country,Year) %>% 
+#   select(Country,Year,ene_coal_tpes_IEA,ene_crude_tpes_IEA,ene_elec_tpes_IEA,ene_gas_tpes_IEA,ene_geo_tpes_IEA,
+#          ene_hydro_tpes_IEA,ene_nuclear_tpes_IEA,ene_oil_tpes_IEA,ene_solar_wind_other_tpes_IEA,ene_tot_tpes_IEA)
+
+
+bp <- openxlsx::read.xlsx('Data for Johannes/bp-stats-review-2019-consolidated-dataset-narrow-format.xlsx','Sheet1')
+bp <- spread(bp,Var,Value)
+bp <- bp %>% 
+  filter(Country=="United Kingdom")
+
+  jd <- pe %>% 
   select(country=Country,ISO,year=Year,region_UN6,pop_UN,gdp_ppp_WB,co2_terr_GCB,ene_coal_tpes_IEA,
          ene_tot_tpes_IEA,ene_tot_tfec_IEA,subsidy_pretax_IMF,subsidy_posttax_IMF,climate_laws_total=laws) %>% 
   filter(year>1989)
